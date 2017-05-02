@@ -118,7 +118,7 @@ main3_2.m <- function(){
 # Implement an online gradient descent procedure for finding the regression coefficients
 # w. Your program should:
 
-online_gd <- function(X,y,rate_divisor){
+online_gd <- function(X,y,rate_divisor,error_report_intv){
   X <- cbind(rep(1,nrow(X)),X) # add X0 columns for intercept term
   
 # start with zero weights (all weights set to 0 at the beginning);
@@ -135,16 +135,26 @@ online_gd <- function(X,y,rate_divisor){
 # repeat the update procedure for 1000 steps reusing the examples in the training data
 # if neccessary (hint: the index of the i-th example in the training set can be obtained
 # by (i mod n) operation);
-  plot(x=0,xlim=range(c(0,1000)),ylim=range(c(-30,30)))
+  plot(NULL,xlim=range(c(0,1000/error_report_intv)),ylim=range(c(0,6000)),ylab = "MSE",xlab="iteration/50")
   
+  predicted_cache <- list()
+  actual_cache <- list()
   for(t_idx in 0:999)
   {
     i <- (t_idx %% nrow(X)) + 1 # training sample idx
     a <- alpha(t_idx + 1)
     h <- (t(w) %*% X[i,])
     e <- y[i] - h
-    print(paste("e:",e,sep=" "))
-    points(y=e,x=t_idx)
+    predicted_cache <- cbind(predicted_cache,h)
+    actual_cache <- cbind(actual_cache,y[i])
+    if(i %% error_report_intv == 0){
+      #print(paste("predicted_cache:",predicted_cache,"actual_cache:",actual_cache))
+      interval_mse <- LR_mse(as.numeric(actual_cache),as.numeric(predicted_cache))
+      print(paste("interval mse:",interval_mse,sep=" "))
+      points(y=interval_mse,x=t_idx/error_report_intv)
+      #predicted_cache <- list()
+      #actual_cache <- list()
+    }
     for(j in 1:length(w)){ # feature idx
       w_temp[j] <- w[j] + a * e * X[i,j]
     }
@@ -159,7 +169,7 @@ online_gd <- function(X,y,rate_divisor){
   return(w)
 }
   
-online_gd(as.matrix(housing_train_df[,1:13]),as.matrix(housing_train_df[,14]),100000)
+online_gd(as.matrix(housing_train_df[,1:13]),as.matrix(housing_train_df[,14]),100000,5)
 
 # Write a program main3_3.m that runs the gradient procedure on the data and at the
 # end prints the mean test and train errors. Your program should normalize the data
@@ -170,23 +180,23 @@ online_gd(as.matrix(housing_train_df[,1:13]),as.matrix(housing_train_df[,14]),10
 main3_3.m <- function(){
   # train
   norm_housing_train_df <- housing_train_df %>% scale()
-  w <- online_gd(as.matrix(norm_housing_train_df[,1:13]),as.matrix(norm_housing_train_df[,14]),1)
+  w <- online_gd(as.matrix(norm_housing_train_df[,1:13]),as.matrix(norm_housing_train_df[,14]),1,10)
  
   # assess training
-  train_predictions <- t(w) %*% t(cbind(rep(1,nrow(norm_housing_train_df)),as.matrix(norm_housing_train_df[,1:13])))
+  train_predicted <- t(w) %*% t(cbind(rep(1,nrow(norm_housing_train_df)),as.matrix(norm_housing_train_df[,1:13])))
   train_actual <- t(as.matrix(norm_housing_train_df[,14]))
-  train_errors <- train_predictions - train_actual
-  print(paste("mean train errors:",mean(train_errors),sep=" "))
+  print(paste("mean squared train errors:",LR_mse(train_actual,train_predicted),sep=" "))
   
   # test
   norm_housing_test_df <- housing_test_df %>% scale()
-  test_predictions <- t(w) %*% t(cbind(rep(1,nrow(norm_housing_test_df)),as.matrix(norm_housing_test_df[,1:13])))
+  test_predicted <- t(w) %*% t(cbind(rep(1,nrow(norm_housing_test_df)),as.matrix(norm_housing_test_df[,1:13])))
   test_actual <- t(as.matrix(norm_housing_test_df[,14]))
-  test_errors <- test_predictions - test_actual
-  print(paste("mean test errors:",mean(test_errors),sep=" "))
+  print(paste("mean squared test errors:",LR_mse(test_actual,test_predicted),sep=" "))
 }
 
 # Run the gradient descent on un-normalized dataset. What happened?
+
+# weights blow up and there's no convergence without a low alpha
 
 # Modify main3_3.m from part b, such that it lets you to progressively observe changes
 # in the mean train and test errors. Use functions init_progress_graph and
@@ -201,6 +211,9 @@ main3_3.m <- function(){
 # and any interesting behaviors you observe.
 
 # Problem 1.4. Regression with polynomials.
+
+
+
 # Problem 2.1. Data analysis
 # Problem 2.2. Logistic regression
 # Problem 2.3. Generative classification model
