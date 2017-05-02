@@ -212,7 +212,47 @@ main3_3.m <- function(){
 
 # Problem 1.4. Regression with polynomials.
 
+# Write a function extendx that takes an input x and returns an expanded x that
+# includes all linear and degree two polynomials.
 
+extendx <- function(x){
+  z <- x
+  for(col in 1:ncol(x)){
+    z <- cbind(z,x[,col]^2)
+  }
+  return(z)
+}
+
+# What happened to the binary attribute after the transformation?
+
+extended_housing_train_mtx <- scale(extendx(as.matrix(housing_train_df[,1:13])))
+extended_housing_test_mtx <- scale(extendx(as.matrix(housing_test_df[,1:13])))
+
+# the binary attribute was just duplicated... which makes sense as 1^2 = 1 and 0^2 = 0
+
+# Write and submit a Matlab program main3_4.m that computes the regression
+# coefficients for the extended input and both train and test errors for the result.
+
+main3_4.m <- function(){
+  # train
+  w <- online_gd(extended_housing_train_mtx,as.matrix(norm_housing_train_df[,14]),2,10)
+  
+  # assess training
+  xtrain_predicted <- t(w) %*% t(cbind(rep(1,nrow(extended_housing_train_mtx)),extended_housing_train_mtx))
+  xtrain_actual <- t(as.matrix(norm_housing_train_df[,14]))
+  print(paste("mean squared x train errors:",LR_mse(xtrain_actual,xtrain_predicted),sep=" "))
+  
+  # test
+  xtest_predicted <- t(w) %*% t(cbind(rep(1,nrow(extended_housing_test_mtx)),extended_housing_test_mtx))
+  xtest_actual <- t(as.matrix(norm_housing_test_df[,14]))
+  print(paste("mean squared x test errors:",LR_mse(xtest_actual,xtest_predicted),sep=" "))
+}
+
+# Report both errors in your report and compare them with the results in part 2. What
+# do you see? Which method would you use for the prediction? Why? Please do not turn in
+# the weights for this part in your report.
+
+# we get improved performance but have to tune the alpha down a bit.. dividing by 2
 
 # Problem 2.1. Data analysis
 # Problem 2.2. Logistic regression
