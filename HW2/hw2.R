@@ -255,5 +255,102 @@ main3_4.m <- function(){
 # we get improved performance but have to tune the alpha down a bit.. dividing by 2
 
 # Problem 2.1. Data analysis
+# The dataset we use in this problem set is very simple and consists of a two-dimensional
+# input and a class label. The data are available on the course web page and are divided
+# into two files - one used for training (classification_train.txt), the other for testing
+# (classification_test.txt). The data in files are in rows such that first two columns
+# represent inputs and the last (third) column the class label (0 or 1).
+
+# Since inputs are only two dimensional we can easily visualize the data for the two
+# classes in a 2D plot.
+
+# Write a program that plots the input data points in classification_train.txt such that
+# the plot distinguishes between data points with different class labels (use different 
+# color and symbol for a point, e.g. ’x’ or ’o’ ).
+
+classification_train_df <- read.table("classification_train.txt")
+plot(x=classification_train_df$V1,y=classification_train_df$V2,pch=2 + classification_train_df$V3,col=2 + 2 * classification_train_df$V3)
+
+# Include the plot in your report. Is it possible to separate the two classes perfectly
+# with a linear decision boundary?
+
+# No, it does not appear the two classes are linearly separable.
+
 # Problem 2.2. Logistic regression
+
+# We are interested in building a classifier based on the logistic regression model and
+# the gradient optimization methods.
+
+# (a) During the class you were given the expression for the gradient of the logistic
+# regression model. Use the loglikelihood setup from the lecture to derive the expression.
+
+# Show clearly the steps of the derivation. Please remember that the ’default’ gradient
+# takes into account all datapoints in the training set.
+
+# (b) Write and submit a gradient procedure GLR.m for updating the parameters of the
+# logistic regression model. Your gradient procedure should:
+  
+# – start from unit weights (all weights set to 1 at the beginning);
+# – use the annealed learning rate 2 / k ;
+# – executes for K steps where K is the parameter of the procedures.
+
+# (c) Write and submit a program main2.m that runs the GLR function for 500 steps and
+# after the training computes mean misclassification errors for both the training and
+# test set. In your report include, the resulting weights, and misclassification errors.
+
+# (d) Update the main2.m with plot functions that let you observe the progress of the
+# errors after every 50 update steps. Use functions defined earlier for this purpose.
+# Include the resulting graph in your report.
+
+# (e) Experiment with the GLR function by: (I) changing the number of steps K and
+# (II) trying different learning rates. In particular, try some constant learning rates
+# and 1/ k learning rate schedule. Report the results and graph from your experiments
+# and explanations of behaviors you have observed.
+
 # Problem 2.3. Generative classification model
+
+# An alernative approach is to learn a generative model with class-conditional densities
+# and use the parameters of such a model to do the prediction.
+
+# Assume that an input x for each class (c = 0 or 1) follows a multivariate normal
+# distribution. That is,
+# <eqn>
+
+# Further assume that the prior probability of a class is represented by a Bernoulli
+# distribution.
+
+# Parameters of the generative model can be computed from the training data using density
+# estimation techniques, such as maximum likelihood estimation. Once this is ccomplished,
+# we can use the estimates to make class predictions for new inputs.
+
+# Let <eqn> represent parameter estimates. To predict the class we use
+# discriminant functions based on the posterior probability of a class given the input
+# and model parameters. This can be computed via Bayes rule:
+# <eqn>
+
+#Assume we want to use a generative model in which the two class conditional densities
+#share the same covariance matrix Σ . That is:
+# <eqn>
+# Provide the following answers:
+
+# (a) Give the formula for computing ML estimates of means of class conditional
+# densities?
+
+# (b) How would you go about computing the estimate of the covariance matrix Σ ?
+# Note that the estimate of Σ must combine both class 0 and class 1 examples.
+
+# (c) How would you estimate the prior of class
+# <eqn>
+
+# (d) Implement function Max_Likelihood that computes the estimates of model
+# parameters using the training set.
+
+# (e) Implement the function Predict_class that chooses the class using the discriminant
+# functions based on class posteriors.
+
+# (f) Write and submit a program main4.m that learns the generative model and then uses
+# it to compute the predictions. The program should compute mean misclassification errors
+# for both training and testing datasets.
+
+# (g) Report the results (parameters of the generative model), and errors. Compare
+# them to the results obtained in problem 2.
