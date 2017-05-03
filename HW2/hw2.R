@@ -461,12 +461,106 @@ main3.m <- function(){
 # (d) Implement function Max_Likelihood that computes the estimates of model
 # parameters using the training set.
 
+Max_Likelihood <- function(X,y){
+  N = nrow(X)
+  num0 = sum(sapply(y, function(x) x == 0))
+  num1 = sum(sapply(y, function(x) x == 1))
+  prior0 = num0/N
+  prior1 = num1/N
+  mean0_x = 0
+  mean1_x = 0
+  cov01 = matrix(c(0, 0, 0, 0), byrow = TRUE, 2, 2)
+  
+  for(i in 1:N){
+    if(y[i] == 0){
+      mean0_x = mean0_x + X[i,]
+    }
+    else { # y[i] == 0
+      mean1_x = mean1_x + X[i,]
+    }
+  }
+  mean0 = mean0_x / num0
+  mean1 = mean1_x / num1
+  
+  for(n in 1:N){
+    if(y[n] == 0){
+      cov01 = cov01 + (X[i,] - mean0) %*% t(X[i,] - mean0)
+    }
+    else { # y[i] = 0
+      cov01 = cov01 + (X[i,] - mean1) %*% t(X[i,] - mean1)
+    }
+  }
+  cov01 = cov01 / N
+  return(list("prior0"=prior0,"prior1"=prior1,"mean0"=mean0,"mean1"=mean1,"cov01"=cov01))
+}
+
 # (e) Implement the function Predict_class that chooses the class using the discriminant
 # functions based on class posteriors.
+
+Predict_class <- function(X,params){
+  w_func <- function(cov01,mean0,mean1){
+    return(solve(cov01) %*% (mean0 - mean1))
+  }
+  
+  w0_func <- function(cov01,mean0,mean1,prior0,prior1){
+    return(as.numeric(
+      -1/2 * t(mean0) %*% solve(cov01) %*% mean0
+      +1/2 * t(mean1) %*% solve(cov01) %*% mean1
+      + log(prior0/prior1)))
+  }
+  
+  w <- w_func(params[["cov01"]],
+              params[["mean0"]],
+              params[["mean1"]])
+  
+  w0 <- w0_func(params[["cov01"]],
+                params[["mean0"]],
+                params[["mean1"]],
+                params[["prior0"]],
+                params[["prior1"]])
+  
+  predictions <- t(w) %*% t(X) + w0
+  
+  return(predictions)
+}
 
 # (f) Write and submit a program main4.m that learns the generative model and then uses
 # it to compute the predictions. The program should compute mean misclassification errors
 # for both training and testing datasets.
+
+to_class0_binary <- function(non_binary){
+  if(non_binary > 0){
+    return(0)
+  }
+  return(1)
+}
+
+main4.m <- function(){
+  params <- Max_Likelihood(as.matrix(classification_train_df[,1:2]),as.matrix(classification_train_df[,3]))
+  predictions <- Predict_class(as.matrix(classification_train_df[,1:2]),params)
+
+  # assess training
+  class_train_predicted <- Predict_class(as.matrix(classification_train_df[,1:2]),params)
+  class_train_actual <- t(as.matrix(classification_train_df[,3]))
+  print(paste("mean squared class train errors:",LR_mse(class_train_actual,class_train_predicted),sep=" "))
+  num_err <- sum(abs(sapply(class_train_predicted,to_class0_binary) - class_train_actual))
+  tot <- nrow(classification_train_df)
+  pct_err <- (num_err/tot) * 100
+  print(paste("number class train errors:",num_err,
+              " of ", tot,
+              " = ", pct_err, "%",sep=" "))
+  
+  # test
+  class_test_predicted <- Predict_class(as.matrix(classification_test_df[,1:2]),params)
+  class_test_actual <- t(as.matrix(classification_test_df[,3]))
+  print(paste("mean squared class test errors:",LR_mse(class_test_actual,class_test_predicted),sep=" "))
+  num_err <- sum(abs(sapply(class_test_predicted,to_class0_binary) - class_test_actual))
+  tot <- nrow(classification_test_df)
+  pct_err <- (num_err/tot) * 100
+  print(paste("number class test errors:",num_err,
+              " of ", tot,
+              " = ", pct_err, "%",sep=" "))  
+}
 
 # (g) Report the results (parameters of the generative model), and errors. Compare
 # them to the results obtained in problem 2.
