@@ -475,7 +475,7 @@ Max_Likelihood <- function(X,y){
     if(y[i] == 0){
       mean0_x = mean0_x + X[i,]
     }
-    else { # y[i] == 0
+    else { # y[i] == 1
       mean1_x = mean1_x + X[i,]
     }
   }
@@ -484,10 +484,10 @@ Max_Likelihood <- function(X,y){
   
   for(n in 1:N){
     if(y[n] == 0){
-      cov01 = cov01 + (X[i,] - mean0) %*% t(X[i,] - mean0)
+      cov01 = cov01 + (X[n,] - mean0) %*% t(X[n,] - mean0)
     }
-    else { # y[i] = 0
-      cov01 = cov01 + (X[i,] - mean1) %*% t(X[i,] - mean1)
+    else { # y[n] = 1
+      cov01 = cov01 + (X[n,] - mean1) %*% t(X[n,] - mean1)
     }
   }
   cov01 = cov01 / N
@@ -509,6 +509,10 @@ Predict_class <- function(X,params){
       + log(prior0/prior1)))
   }
   
+  sigma <- function(a){
+    return(1/(1 + exp(-a)))
+  }
+  
   w <- w_func(params[["cov01"]],
               params[["mean0"]],
               params[["mean1"]])
@@ -519,7 +523,9 @@ Predict_class <- function(X,params){
                 params[["prior0"]],
                 params[["prior1"]])
   
-  predictions <- t(w) %*% t(X) + w0
+  a <- t(w) %*% t(X) + w0
+  
+  predictions <- sapply(a,sigma)
   
   return(predictions)
 }
@@ -529,7 +535,7 @@ Predict_class <- function(X,params){
 # for both training and testing datasets.
 
 to_class0_binary <- function(non_binary){
-  if(non_binary > 0){
+  if(non_binary > .5){
     return(0)
   }
   return(1)
@@ -549,6 +555,10 @@ main4.m <- function(){
   print(paste("number class train errors:",num_err,
               " of ", tot,
               " = ", pct_err, "%",sep=" "))
+  plot(x=classification_train_df$V1,
+       y=classification_train_df$V2,
+       pch=2 + classification_train_df$V3,
+       col=2 + 2 * sapply(class_train_predicted,to_class0_binary))
   
   # test
   class_test_predicted <- Predict_class(as.matrix(classification_test_df[,1:2]),params)
@@ -560,6 +570,10 @@ main4.m <- function(){
   print(paste("number class test errors:",num_err,
               " of ", tot,
               " = ", pct_err, "%",sep=" "))  
+  plot(x=classification_test_df$V1,
+       y=classification_test_df$V2,
+       pch=2 + classification_test_df$V3,
+       col=2 + 2 * sapply(class_test_predicted,to_class0_binary))
 }
 
 # (g) Report the results (parameters of the generative model), and errors. Compare
