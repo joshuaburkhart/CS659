@@ -271,6 +271,10 @@ main3_4.m <- function(){
 classification_train_df <- read.table("classification_train.txt")
 plot(x=classification_train_df$V1,y=classification_train_df$V2,pch=2 + classification_train_df$V3,col=2 + 2 * classification_train_df$V3)
 
+classification_test_df <- read.table("classification_test.txt")
+plot(x=classification_test_df$V1,y=classification_test_df$V2,pch=2 + classification_test_df$V3,col=2 + 2 * classification_test_df$V3)
+
+
 # Include the plot in your report. Is it possible to separate the two classes perfectly
 # with a linear decision boundary?
 
@@ -289,23 +293,135 @@ plot(x=classification_train_df$V1,y=classification_train_df$V2,pch=2 + classific
 
 # (b) Write and submit a gradient procedure GLR.m for updating the parameters of the
 # logistic regression model. Your gradient procedure should:
-  
-# – start from unit weights (all weights set to 1 at the beginning);
-# – use the annealed learning rate 2 / k ;
-# – executes for K steps where K is the parameter of the procedures.
 
+GLR.m <- function(X,y,rate_divisor,error_report_intv,k){
+  X <- cbind(rep(1,nrow(X)),X) # add X0 columns for intercept term
+  
+  # – start from unit weights (all weights set to 1 at the beginning);
+  w <- as.matrix(rep(1,ncol(X)))
+  w_temp <- w
+  
+  # – use the annealed learning rate 2 / k ;
+  alpha <- function(k){
+    rate <- 2/k
+    return(rate/rate_divisor)
+  }
+  # repeat the update procedure for 1000 steps reusing the examples in the training data
+  # if neccessary (hint: the index of the i-th example in the training set can be obtained
+  # by (i mod n) operation);
+  plot(NULL,xlim=range(c(0,k/error_report_intv)),ylim=range(c(0,1)),ylab = "% error",xlab=paste("iteration/",error_report_intv,sep=""))
+  
+  predicted_cache <- list()
+  actual_cache <- list()
+  # – executes for K steps where K is the parameter of the procedures.
+  for(k_idx in 0:(k - 1))
+  {
+    i <- (k_idx %% nrow(X)) + 1 # training sample idx
+    a <- alpha(k_idx + 1)
+    z <- (t(w) %*% X[i,])
+    g <- round(1/(1 + exp(-z)))
+    e <- y[i] - g
+    predicted_cache <- cbind(predicted_cache,g)
+    actual_cache <- cbind(actual_cache,y[i])
+    if(i %% error_report_intv == 0){
+      #print(paste("predicted_cache:",predicted_cache,"actual_cache:",actual_cache))
+      pct_err <- sum(abs(round(class_train_predicted) - class_train_actual)) / length(predicted_cache)
+      print(paste("pct_err:",pct_err,sep=" "))
+      points(y=pct_err,x=k_idx/error_report_intv)
+      #predicted_cache <- list()
+      #actual_cache <- list()
+    }
+    for(j in 1:length(w)){ # feature idx
+      w_temp[j] <- w[j] + a * e * X[i,j]
+    }
+    w <- w_temp # simultaneous update!
+    #print(w)
+    #Sys.sleep(0.1)
+    if(k_idx > 1){
+      #exit()
+    }
+  }
+  # return the final set of weights.
+  return(w)
+}
+  
 # (c) Write and submit a program main2.m that runs the GLR function for 500 steps and
 # after the training computes mean misclassification errors for both the training and
 # test set. In your report include, the resulting weights, and misclassification errors.
+
+to_binary <- function(non_binary){
+  if(non_binary > 0){
+    return(1)
+  }
+  return(0)
+}
+
+main2.m <- function(){
+  # train
+  w <- GLR.m(as.matrix(classification_train_df[,1:2]),as.matrix(classification_train_df[,3]),1,10,500)
+  
+  # assess training
+  class_train_predicted <- t(w) %*% t(cbind(rep(1,nrow(classification_train_df)),as.matrix(classification_train_df[,1:2])))
+  class_train_actual <- t(as.matrix(classification_train_df[,3]))
+  print(paste("mean squared class train errors:",LR_mse(class_train_actual,class_train_predicted),sep=" "))
+  num_err <- sum(abs(sapply(class_train_predicted,to_binary) - class_train_actual))
+  tot <- nrow(classification_train_df)
+  pct_err <- (num_err/tot) * 100
+  print(paste("number class train errors:",num_err,
+              " of ", tot,
+              " = ", pct_err, "%",sep=" "))
+  
+  # test
+  class_test_predicted <- t(w) %*% t(cbind(rep(1,nrow(classification_test_df)),as.matrix(classification_test_df[,1:2])))
+  class_test_actual <- t(as.matrix(classification_test_df[,3]))
+  print(paste("mean squared class test errors:",LR_mse(class_test_actual,class_test_predicted),sep=" "))
+  num_err <- sum(abs(sapply(class_test_predicted,to_binary) - class_test_actual))
+  tot <- nrow(classification_test_df)
+  pct_err <- (num_err/tot) * 100
+  print(paste("number class test errors:",num_err,
+              " of ", tot,
+              " = ", pct_err, "%",sep=" "))
+}
 
 # (d) Update the main2.m with plot functions that let you observe the progress of the
 # errors after every 50 update steps. Use functions defined earlier for this purpose.
 # Include the resulting graph in your report.
 
-# (e) Experiment with the GLR function by: (I) changing the number of steps K and
-# (II) trying different learning rates. In particular, try some constant learning rates
-# and 1/ k learning rate schedule. Report the results and graph from your experiments
-# and explanations of behaviors you have observed.
+# (see above)
+
+# (e) Experiment with the GLR function by:
+# (I) changing the number of steps K and
+# (II) trying different learning rates.
+# In particular, try some constant learning rates and 1/ k learning rate schedule. 
+# Report the results and graph from your experiments and explanations of behaviors
+# you have observed.
+
+main3.m <- function(){
+  # train
+  w <- GLR.m(as.matrix(classification_train_df[,1:2]),as.matrix(classification_train_df[,3]),2,100,10000)
+  
+  # assess training
+  class_train_predicted <- t(w) %*% t(cbind(rep(1,nrow(classification_train_df)),as.matrix(classification_train_df[,1:2])))
+  class_train_actual <- t(as.matrix(classification_train_df[,3]))
+  print(paste("mean squared class train errors:",LR_mse(class_train_actual,class_train_predicted),sep=" "))
+  num_err <- sum(abs(sapply(class_train_predicted,to_binary) - class_train_actual))
+  tot <- nrow(classification_train_df)
+  pct_err <- (num_err/tot) * 100
+  print(paste("number class train errors:",num_err,
+              " of ", tot,
+              " = ", pct_err, "%",sep=" "))
+  
+  # test
+  class_test_predicted <- t(w) %*% t(cbind(rep(1,nrow(classification_test_df)),as.matrix(classification_test_df[,1:2])))
+  class_test_actual <- t(as.matrix(classification_test_df[,3]))
+  print(paste("mean squared class test errors:",LR_mse(class_test_actual,class_test_predicted),sep=" "))
+  num_err <- sum(abs(sapply(class_test_predicted,to_binary) - class_test_actual))
+  tot <- nrow(classification_test_df)
+  pct_err <- (num_err/tot) * 100
+  print(paste("number class test errors:",num_err,
+              " of ", tot,
+              " = ", pct_err, "%",sep=" "))
+}
 
 # Problem 2.3. Generative classification model
 
