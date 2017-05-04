@@ -1,3 +1,4 @@
+
 library(magrittr)
 library(dplyr)
 
@@ -83,14 +84,14 @@ LR_predict <- function(X,w){
 # the weights for the training set, and computes the mean squared error of your predictor
 # on both the training and testing data set.
 
-LR_mse <- function(actual,predicted){
-  errors <- actual - predicted
-  sqerrors <- errors^2
-  meansqerrors <- mean(sqerrors)
-  return(meansqerrors)
-}
-
 main3_2.m <- function(){
+  LR_mse <- function(actual,predicted){
+    errors <- actual - predicted
+    sqerrors <- errors^2
+    meansqerrors <- mean(sqerrors)
+    return(meansqerrors)
+  }
+  
   housing_train_df <- read.table("housing_train.txt")
   w <- LR_solve(as.matrix(housing_train_df[,1:13]),as.matrix(housing_train_df[,14]))
   
@@ -102,6 +103,7 @@ main3_2.m <- function(){
   
   mse0 <- LR_mse(as.matrix(housing_train_df[,14]),y0)
   mse1 <- LR_mse(as.matrix(housing_test_df[,14]),y)
+  print(paste("mse0:",mse0,"mse1:",mse1,sep=" "))
 }
 
 # in your report please list the resulting weights, and both mean square errors.
@@ -118,8 +120,9 @@ main3_2.m <- function(){
 # Implement an online gradient descent procedure for finding the regression coefficients
 # w. Your program should:
 
-online_gd <- function(X,y,rate_divisor,error_report_intv){
+online_gd <- function(X,y,X_test,y_test,rate_divisor,error_report_intv){
   X <- cbind(rep(1,nrow(X)),X) # add X0 columns for intercept term
+  X_test <- cbind(rep(1,nrow(X_test)),X_test) # add X0 columns for intercept term
   
 # start with zero weights (all weights set to 0 at the beginning);
   w <- as.matrix(rep(0,ncol(X)))
@@ -145,15 +148,20 @@ online_gd <- function(X,y,rate_divisor,error_report_intv){
     a <- alpha(t_idx + 1)
     h <- (t(w) %*% X[i,])
     e <- y[i] - h
-    predicted_cache <- cbind(predicted_cache,h)
-    actual_cache <- cbind(actual_cache,y[i])
     if(i %% error_report_intv == 0){
-      #print(paste("predicted_cache:",predicted_cache,"actual_cache:",actual_cache))
-      interval_mse <- LR_mse(as.numeric(actual_cache),as.numeric(predicted_cache))
-      print(paste("interval mse:",interval_mse,sep=" "))
-      points(y=interval_mse,x=t_idx/error_report_intv)
-      #predicted_cache <- list()
-      #actual_cache <- list()
+      predicted <- X %*% w
+      predicted_test <- X_test %*% w
+      actual <- y
+      actual_test <- y_test
+      
+      mse <- LR_mse(as.numeric(actual),as.numeric(predicted))
+      mse_test <- LR_mse(as.numeric(actual_test),as.numeric(predicted_test))
+      
+      print(paste("train mse:",mse,sep=" "))
+      print(paste("test mse:",mse_test,sep=" "))
+      
+      points(y=mse,x=t_idx/error_report_intv)
+      points(y=mse_test,x=t_idx/error_report_intv,pch=2)
     }
     for(j in 1:length(w)){ # feature idx
       w_temp[j] <- w[j] + a * e * X[i,j]
@@ -169,7 +177,7 @@ online_gd <- function(X,y,rate_divisor,error_report_intv){
   return(w)
 }
   
-online_gd(as.matrix(housing_train_df[,1:13]),as.matrix(housing_train_df[,14]),100000,5)
+#online_gd(as.matrix(housing_train_df[,1:13]),as.matrix(housing_train_df[,14]),100000,5)
 
 # Write a program main3_3.m that runs the gradient procedure on the data and at the
 # end prints the mean test and train errors. Your program should normalize the data
@@ -178,9 +186,12 @@ online_gd(as.matrix(housing_train_df[,1:13]),as.matrix(housing_train_df[,14]),10
 # the regression problem exactly?
 
 main3_3.m <- function(){
-  # train
+  #normalize
   norm_housing_train_df <- housing_train_df %>% scale()
-  w <- online_gd(as.matrix(norm_housing_train_df[,1:13]),as.matrix(norm_housing_train_df[,14]),1,10)
+  norm_housing_test_df <- housing_test_df %>% scale()
+  
+  # train
+  w <- online_gd(as.matrix(norm_housing_train_df[,1:13]),as.matrix(norm_housing_train_df[,14]),as.matrix(norm_housing_test_df[,1:13]),as.matrix(norm_housing_test_df[,14]),3,50)
  
   # assess training
   train_predicted <- t(w) %*% t(cbind(rep(1,nrow(norm_housing_train_df)),as.matrix(norm_housing_train_df[,1:13])))
@@ -188,7 +199,6 @@ main3_3.m <- function(){
   print(paste("mean squared train errors:",LR_mse(train_actual,train_predicted),sep=" "))
   
   # test
-  norm_housing_test_df <- housing_test_df %>% scale()
   test_predicted <- t(w) %*% t(cbind(rep(1,nrow(norm_housing_test_df)),as.matrix(norm_housing_test_df[,1:13])))
   test_actual <- t(as.matrix(norm_housing_test_df[,14]))
   print(paste("mean squared test errors:",LR_mse(test_actual,test_predicted),sep=" "))
@@ -225,17 +235,17 @@ extendx <- function(x){
 
 # What happened to the binary attribute after the transformation?
 
-extended_housing_train_mtx <- scale(extendx(as.matrix(housing_train_df[,1:13])))
-extended_housing_test_mtx <- scale(extendx(as.matrix(housing_test_df[,1:13])))
-
 # the binary attribute was just duplicated... which makes sense as 1^2 = 1 and 0^2 = 0
 
 # Write and submit a Matlab program main3_4.m that computes the regression
 # coefficients for the extended input and both train and test errors for the result.
 
 main3_4.m <- function(){
+  extended_housing_train_mtx <- scale(extendx(as.matrix(housing_train_df[,1:13])))
+  extended_housing_test_mtx <- scale(extendx(as.matrix(housing_test_df[,1:13])))
+  
   # train
-  w <- online_gd(extended_housing_train_mtx,as.matrix(norm_housing_train_df[,14]),2,10)
+  w <- online_gd(extended_housing_train_mtx,as.matrix(norm_housing_train_df[,14]),extended_housing_test_mtx,as.matrix(norm_housing_train_df[,14]),2,50)
   
   # assess training
   xtrain_predicted <- t(w) %*% t(cbind(rep(1,nrow(extended_housing_train_mtx)),extended_housing_train_mtx))
@@ -294,8 +304,9 @@ plot(x=classification_test_df$V1,y=classification_test_df$V2,pch=2 + classificat
 # (b) Write and submit a gradient procedure GLR.m for updating the parameters of the
 # logistic regression model. Your gradient procedure should:
 
-GLR.m <- function(X,y,rate_divisor,error_report_intv,k){
+GLR.m <- function(X,y,X_test,y_test,rate_divisor,error_report_intv,k){
   X <- cbind(rep(1,nrow(X)),X) # add X0 columns for intercept term
+  X_test <- cbind(rep(1,nrow(X_test)),X_test)
   
   # – start from unit weights (all weights set to 1 at the beginning);
   w <- as.matrix(rep(1,ncol(X)))
@@ -303,8 +314,9 @@ GLR.m <- function(X,y,rate_divisor,error_report_intv,k){
   
   # – use the annealed learning rate 2 / k ;
   alpha <- function(k){
-    rate <- 2/k
-    return(rate/rate_divisor)
+    return(0.00001)
+    #rate <- 2/k
+    #return(rate/rate_divisor)
   }
   # repeat the update procedure for 1000 steps reusing the examples in the training data
   # if neccessary (hint: the index of the i-th example in the training set can be obtained
@@ -323,14 +335,21 @@ GLR.m <- function(X,y,rate_divisor,error_report_intv,k){
     e <- y[i] - g
     predicted_cache <- cbind(predicted_cache,g)
     actual_cache <- cbind(actual_cache,y[i])
-    if(i %% error_report_intv == 0){
-      #print(paste("predicted_cache:",predicted_cache,"actual_cache:",actual_cache))
-      pct_err <- sum(abs(round(class_train_predicted) - class_train_actual)) / length(predicted_cache)
-      print(paste("pct_err:",pct_err,sep=" "))
-      points(y=pct_err,x=k_idx/error_report_intv)
-      #predicted_cache <- list()
-      #actual_cache <- list()
-    }
+      if(i %% error_report_intv == 0){
+        predicted <- X %*% w
+        predicted_test <- X_test %*% w
+        actual <- y
+        actual_test <- y_test
+        
+        pct_err <- sum(abs(round(predicted) - y)) / length(predicted)
+        pct_err_test <- sum(abs(round(predicted_test) - y_test)) / length(predicted_test)
+        
+        print(paste("train pct_err:",pct_err,sep=" "))
+        print(paste("test pct_err:",pct_err_test,sep=" "))
+        
+        points(y=pct_err,x=k_idx/error_report_intv)
+        points(y=pct_err_test,x=k_idx/error_report_intv,pch=2)
+      }
     for(j in 1:length(w)){ # feature idx
       w_temp[j] <- w[j] + a * e * X[i,j]
     }
@@ -349,16 +368,16 @@ GLR.m <- function(X,y,rate_divisor,error_report_intv,k){
 # after the training computes mean misclassification errors for both the training and
 # test set. In your report include, the resulting weights, and misclassification errors.
 
-to_binary <- function(non_binary){
-  if(non_binary > 0){
-    return(1)
-  }
-  return(0)
-}
-
 main2.m <- function(){
+  to_binary <- function(non_binary){
+    if(non_binary > 0){
+      return(1)
+    }
+    return(0)
+  }
+  
   # train
-  w <- GLR.m(as.matrix(classification_train_df[,1:2]),as.matrix(classification_train_df[,3]),1,10,500)
+  w <- GLR.m(as.matrix(classification_train_df[,1:2]),as.matrix(classification_train_df[,3]),as.matrix(classification_test_df[,1:2]),as.matrix(classification_test_df[,3]),1,50,1000)
   
   # assess training
   class_train_predicted <- t(w) %*% t(cbind(rep(1,nrow(classification_train_df)),as.matrix(classification_train_df[,1:2])))
@@ -534,14 +553,14 @@ Predict_class <- function(X,params){
 # it to compute the predictions. The program should compute mean misclassification errors
 # for both training and testing datasets.
 
-to_class0_binary <- function(non_binary){
-  if(non_binary > .5){
-    return(0)
-  }
-  return(1)
-}
-
 main4.m <- function(){
+  to_class0_binary <- function(non_binary){
+    if(non_binary > .5){
+      return(0)
+    }
+    return(1)
+  }
+  
   params <- Max_Likelihood(as.matrix(classification_train_df[,1:2]),as.matrix(classification_train_df[,3]))
   predictions <- Predict_class(as.matrix(classification_train_df[,1:2]),params)
 
