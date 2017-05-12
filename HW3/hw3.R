@@ -53,6 +53,6 @@ repeat{
   loopCounter = loopCounter + 1
 }
 
-
-
+plot(x=matrix1[,2],y=matrix1[,3],pch=3 + matrix1[,4],col=3 + matrix1[,4])
+abline(b=(-(w[1]/w[3])/(w[1]/w[2])),a=-w[1]/w[3])
 
