@@ -6,15 +6,15 @@ library(scales)
 # We have data from two classes. The first class has five samples {(-1,-1), (2,0), (2,1), (0,1), (0.5, 1.5)}.
 # The second class has four samples {(3.5,2.5), (3,4), (5,2), (5.5,3)}.
 matrix1 <- t(matrix(c(-1,-1,1,
-             2,0,1,
-             2,1,1,
-             0,1,1,
-             0.5,1.5,1,
-             3.5,2.5,2,
-             3,4,2,
-             5,2,2,
-             5.5,3,2),
-             nrow=3))
+                       2,0,1,
+                       2,1,1,
+                       0,1,1,
+                       0.5,1.5,1,
+                       3.5,2.5,2,
+                       3,4,2,
+                       5,2,2,
+                       5.5,3,2),
+                    nrow=3))
 
 matrix1[,1] <- matrix1[,1] %>% scale(center=TRUE) %>% rescale(to=c(0,1))
 matrix1[,2] <- matrix1[,2] %>% scale(center=TRUE) %>% rescale(to=c(0,1))
@@ -23,6 +23,11 @@ matrix1[,3] <- matrix1[,3] %>% rescale(to=c(-1,1))
 matrix1 <- cbind(rep(1,nrow(matrix1)),matrix1)
 
 w <- as.matrix(runif(n=3,min=0,max=1))
+w_init <- w
+
+plot(x=matrix1[,2],y=matrix1[,3],pch=3 + matrix1[,4],col=3 + matrix1[,4],xlim=c(-1,2),ylim=c(-1,2))
+abline(b=(-(w[1]/w[3])/(w[1]/w[2])),a=-w[1]/w[3],col="black")
+
 
 roundAwayFromZero <- function(x){
   if(x >= 0){
@@ -53,6 +58,10 @@ repeat{
   loopCounter = loopCounter + 1
 }
 
-plot(x=matrix1[,2],y=matrix1[,3],pch=3 + matrix1[,4],col=3 + matrix1[,4])
-abline(b=(-(w[1]/w[3])/(w[1]/w[2])),a=-w[1]/w[3])
+abline(b=(-(w[1]/w[3])/(w[1]/w[2])),a=-w[1]/w[3],col="green")
+
+print(paste("initial weights: ",w_init,sep=""))
+print(paste("final weights: ",w,sep=""))
+print(paste("iterations: ",loopCounter,sep=""))
+
 
