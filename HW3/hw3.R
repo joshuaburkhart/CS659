@@ -64,4 +64,66 @@ print(paste("initial weights: ",w_init,sep=""))
 print(paste("final weights: ",w,sep=""))
 print(paste("iterations: ",loopCounter,sep=""))
 
+# problem 2
+
+main3_1.m <- function(){
+  
+  library(e1071)
+  
+  pima_train_df <- read.table("pima_train.txt")
+  pima_test_df <- read.table("pima_test.txt")
+  
+  model <- e1071::svm(kernel="linear",x=pima_train_df[,1:8],y=pima_train_df[,9])
+  
+  round01 <- function(x){
+    if(x >= 0.5){
+      return(1)
+    }else{
+      return(0)
+    }
+  }
+  
+  train_pred <- predict(model,pima_train_df[,1:8])
+  train_errs <- sum(abs(sapply(train_pred,round01) - pima_train_df[,9]))
+  train_mean_misclass <- train_errs / nrow(pima_train_df)
+  
+  test_pred <- predict(model,pima_test_df[,1:8])
+  test_errs <- sum(abs(sapply(test_pred,round01) - pima_test_df[,9]))
+  test_mean_misclass <- test_errs / nrow(pima_test_df)
+  
+  confusionMatrix <- function(y,y_hat){
+    true_neg = 0
+    true_pos = 0
+    false_neg = 0
+    false_pos = 0
+    for(i in 1:length(y)){
+      if(y[i] == 0 && y_hat[i] == 0){
+        true_neg = true_neg + 1
+      }
+      else if(y[i] == 0 && y_hat[i] == 1){
+        false_pos = false_pos + 1
+      }
+      else if(y[i] == 1 && y_hat[i] == 1){
+        true_pos = true_pos + 1
+      }
+      else if(y[i] == 1 && y_hat[i] == 0){
+        false_neg = false_neg + 1
+      }else{
+        print(paste("error! y[",i,"]: ",y[i],", y_hat[",i,"]: ",y_hat[i],sep=""))
+      }
+    }
+    return(matrix(c(true_neg,false_pos,false_neg,true_pos),nrow=2))
+  }
+  
+  conf_train <- confusionMatrix(pima_train_df[,9],sapply(train_pred,round01))
+  conf_test <- confusionMatrix(pima_test_df[,9],sapply(test_pred,round01))
+  
+  print(paste("mean misclassification training error: ",train_mean_misclass,sep=""))
+  print(paste("mean misclassification test error: ",test_mean_misclass,sep=""))
+  print(paste("training confusion matrix: ",conf_train,sep=""))
+  print(paste("test confusion matrix: ",conf_test,sep=""))
+  
+}
+
+main3_1.m()
 
