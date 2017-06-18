@@ -1,44 +1,47 @@
 set.seed(88)
 
+ETA = 0.001
+
+# input layer
 NUM_FEATURES <- 2
 INPUT_WIDTH <- NUM_FEATURES + 1 # (bias)
+
+# hidden layer
+HIDDEN_LAYER_WIDTH <- 5
+ANN_WIDTH <- HIDDEN_LAYER_WIDTH + 1 # (bias)
+
+# output layer
 NUM_CLASSES <- 4
 OUTPUT_WIDTH <- NUM_CLASSES
-NEURON_LAYER_WIDTH <- 5
-ANN_WIDTH <- NEURON_LAYER_WIDTH + 1 # (bias)
-ANN_DEPTH <- 3
-ETA <- 1
 
-#
-# ----------------   -   -   -   -----------
-# num features + 1 x 6 x 6 x 6 x num classes
-# ----------------   -   -   -   -----------
-#
+# ----------------               -                -----------
+# num features + 1 (input axons) 6 (hidden_axons) num classes
+# ----------------               -                -----------
 
-input_weights <- array(data = runif(n=ANN_WIDTH*INPUT_WIDTH),
-                        dim = c(ANN_WIDTH,INPUT_WIDTH))
-
-input_activation <- matrix(data = 1,
+# input layer
+input_activation <<- matrix(data = 1,
                            nrow = INPUT_WIDTH,
                            ncol = 1)
-
-output_weights <- array(data = runif(n=ANN_WIDTH*OUTPUT_WIDTH),
-                        dim = c(ANN_WIDTH,OUTPUT_WIDTH))
-output_gradients <- matrix(data = 1,
+input_axon_w <<- matrix(data = runif(n = HIDDEN_LAYER_WIDTH * INPUT_WIDTH),
+                       nrow = INPUT_WIDTH,
+                       ncol = HIDDEN_LAYER_WIDTH)
+# hidden layer
+hidden_gradients <<- matrix(data = 1,
+                           nrow = ANN_WIDTH,
+                           ncol = 1)
+hidden_activation <<- matrix(data = 1,
                             nrow = ANN_WIDTH,
                             ncol = 1)
-output_activation <- matrix(data = 1,
-                        nrow = OUTPUT_WIDTH,
-                        ncol = 1)
-
-axon_weights <- array(data = runif(n=ANN_WIDTH*ANN_WIDTH*ANN_DEPTH),
-                      dim = c(ANN_WIDTH,ANN_WIDTH,ANN_DEPTH))
-neuron_gradients <- matrix(data = 1,
-                        nrow=ANN_WIDTH,
-                        ncol=ANN_DEPTH)
-neuron_activation <- matrix(data = 1,
-                        nrow=ANN_WIDTH,
-                        ncol=ANN_DEPTH)
+hidden_axon_w <<- matrix(data = runif(n = ANN_WIDTH * OUTPUT_WIDTH),
+                        nrow = ANN_WIDTH,
+                        ncol = OUTPUT_WIDTH)
+# output layer
+output_gradients <<- matrix(data = 1,
+                           nrow = OUTPUT_WIDTH,
+                           ncol = 1)
+output_activation <<- matrix(data = 1,
+                            nrow = OUTPUT_WIDTH,
+                            ncol = 1)
 
 activation_function <- function(x){
   ex <- exp(x)
@@ -53,96 +56,19 @@ activation_function_deriv <- function(x){
 forward_prop <- function(training_sample_features){
   # input layer
   input_activation <<- c(1,training_sample_features)
-  for(row in 1:NEURON_LAYER_WIDTH){
-    neuron_activation[row,1] <<-
-      activation_function(input_activation %*%
-                            input_weights[row,])
+  #print(input_activation)
+  for(hidden_idx in 1:HIDDEN_LAYER_WIDTH){
+    hidden_activation[hidden_idx] <<-
+      activation_function(t(input_activation) %*%
+                            input_axon_w[,hidden_idx])
   }
-  
-  # hidden layers
-  for(layer in 2:ANN_DEPTH){
-    prev_layer <- neuron_activation[,layer - 1]
-    for(row in 1:NEURON_LAYER_WIDTH){
-      neuron_activation[row,layer] <<-
-        activation_function(prev_layer %*%
-                              axon_weights[row,,layer])
-    }
-  }
+  #print(hidden_activation)
   
   #output layer
-  for(row in 1:OUTPUT_WIDTH){
-    output_activation[row] <<-
-      activation_function(neuron_activation[,ANN_DEPTH] %*%
-                            output_weights[,row])
-  }
-}
-
-error_prop <- function(sqerr){
-  
-  # output gradients
-  for(row in 1:ANN_WIDTH){
-    output_gradients[row] <<-
-    t(output_weights[row,]) %*%
-      (sqerr *
-      activation_function_deriv(output_activation))
-  }
-  
-  # final hidden layer
-  for(row in 1:ANN_WIDTH){
-    neuron_gradients[row,ANN_DEPTH] <<-
-      t(axon_weights[,row,ANN_DEPTH]) %*%
-      (output_gradients *
-      activation_function_deriv(neuron_activation[,ANN_DEPTH]))
-  }
-  
-  # hidden layers
-  for(layer in (ANN_DEPTH - 1):1){
-    for(row in 1:ANN_WIDTH){
-      neuron_gradients[row,layer] <<-
-        t(axon_weights[,row,layer]) %*%
-        (neuron_gradients[,layer + 1] *
-        activation_function_deriv(neuron_activation[,layer]))
-    }
-  }
-}
-
-weight_update <- function(sqerr){
-  
-  # input layer
-  for(row in 1:INPUT_WIDTH){
-    input_weights[,row] <<-
-      input_weights[,row] +
-      ETA *
-      rep(input_activation[row],ANN_WIDTH) *
-      neuron_gradients[,1]
-  }
-  
-  # hidden layers
-  for(layer in 1:(ANN_DEPTH - 1)){
-    for(row in 1:ANN_WIDTH){
-      axon_weights[row,,layer] <<-
-        axon_weights[row,,layer] + 
-        ETA *
-        rep(neuron_activation[row,layer],ANN_WIDTH) *
-        neuron_gradients[,layer + 1]
-    }
-  }
-  
-  # final hidden layer
-  for(row in 1:ANN_WIDTH){
-    axon_weights[row,,ANN_DEPTH] <<-
-      axon_weights[row,,ANN_DEPTH] +
-      ETA *
-      rep(neuron_activation[row,ANN_DEPTH],ANN_WIDTH) *
-      output_gradients
-  }
-  
-  # output layer
-  for(row in 1:OUTPUT_WIDTH){
-    output_weights[,row] <<-
-      output_weights[,row] +
-      ETA *
-      sqerr[row]
+  for(output_idx in 1:OUTPUT_WIDTH){
+    output_activation[output_idx] <<-
+      activation_function(t(hidden_activation) %*%
+                            hidden_axon_w[,output_idx])
   }
 }
 
@@ -154,57 +80,95 @@ encode_class <- function(sample_class){
 
 calc_err <- function(sample_class){
   ann_class_encoding <- encode_class(sample_class)
-  return(output_activation - ann_class_encoding)
+  return(activation_function(output_activation) - ann_class_encoding)
 }
 
 backward_prop <- function(sample_class){
-  er <- calc_err(sample_class)
-  error_prop(er)
-  weight_update(er)
+  output_gradients <<- calc_err(sample_class)
+  
+  for(hidden_idx in 1:ANN_WIDTH){
+    hidden_gradients[hidden_idx] <<-
+      hidden_axon_w[hidden_idx,] %*%
+      output_gradients
+  }
+  
+  for(input_idx in 1:INPUT_WIDTH){
+    input_axon_w[input_idx,] <<-
+      input_axon_w[input_idx,] -
+      ETA *
+      hidden_gradients[1:HIDDEN_LAYER_WIDTH] *
+      activation_function_deriv(input_activation[input_idx])
+  }
+  
+  for(hidden_idx in 1:ANN_WIDTH){
+    hidden_axon_w[hidden_idx,] <<-
+      hidden_axon_w[hidden_idx,] -
+      ETA *
+      output_gradients *
+      activation_function_deriv(hidden_activation[hidden_idx])
+  }
 }
 
 train <- function(training_samples_features, training_samples_classes){
+  for(x in 1:1000){
   for(i in 1:nrow(training_samples_features)){
     forward_prop(training_samples_features[i,])
     backward_prop(training_samples_classes[i])
   }
-}
-
-predict <- function(test_samples_features){
-  for(i in 1:nrow(test_samples_features)){
-    forward_prop(test_samples_features[i,])
-    prediction <- output_activation
-    print(which(prediction == max(prediction)))
   }
 }
 
+predict <- function(test_sample_features){
+  forward_prop(test_sample_features)
+  prediction <- output_activation
+  #print(output_activation)
+  return(which(prediction == max(prediction)))
+}
+
+predict_n <- function(test_samples_features){
+  ps <- c()
+  for(i in 1:nrow(test_samples_features)){
+    ps <- c(ps,predict(test_samples_features[i,]))
+  }
+  return(ps)
+}
+
 samples_f <- matrix(
-  c(1,2000,
-    3,1000,
-    2,4000,
-    2,4000,
-    2,4000,
-    2,4000,
-    2,4000,
-    2,4000,
-    2,3500,
-    3,1500),
-  nrow = 10,
+  c(1.2,100,
+    1.2,2000,
+    1.5,300,
+    1,300,
+    1,1000,
+    1.5,1500,
+    2,2000,
+    2,3000,
+    1.5,1000,
+    2,3000,
+    2.5,7000,
+    2.5,2500,
+    2.5,1000,
+    3,3000,
+    3,2000),
+  nrow = 15,
   ncol = 2,
   byrow = TRUE)
 
 samples_c <- matrix(
-  c(1,3,2,2,2,2,2,2,1,3),
-  nrow = 10,
+  c(1,1,1,1,1,2,2,2,2,2,3,3,3,3,3),
+  nrow = 15,
   ncol = 1,
   byrow = TRUE
 )
 
 norm_samples_f <- scale(samples_f)
-
 train(norm_samples_f, samples_c)
+plot(norm_samples_f,col=samples_c,pch=samples_c)
+predict_n(norm_samples_f)
 
-predict(scale(samples_f))
+rand_points <<- matrix(data = runif(n = 2 * 100),
+                        nrow = 100,
+                        ncol = 2)
 
-#forward_prop(scale(samples_f[1,]))
-#backward_prop(samples_c[1])
+pred_classes <- predict_n(scale(rand_points))
+
+plot(scale(rand_points),col=pred_classes,pch=pred_classes)
