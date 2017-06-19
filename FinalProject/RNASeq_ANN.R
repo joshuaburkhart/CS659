@@ -151,7 +151,11 @@ predict_n <- function(test_samples_features){
 load("~/SoftwareProjects/CellFusionAnalysis/src/PrognosticPredictor/rna_seq/top2.rda")
 
 samples_f <- matrix(
-  c(0,0,
+  c(.1,.6,
+    .1,.7,
+    .1,.8,
+    .1,.9,
+    0,0,
     0,.2,
     .3,.3,
     .3,.3,
@@ -161,19 +165,23 @@ samples_f <- matrix(
     .6,.3,
     .6,.1,
     .6,.35,
+    .7,.6,
+    .7,.7,
+    .7,.8,
+    .7,.9,
     .8,.8,
     .8,.25,
     .8,.1,
     .8,.3,
     .8,.2,
     .8,.4),
-  nrow = 16,
+  nrow = 24,
   ncol = 2,
   byrow = TRUE)
 
 samples_c <- matrix(
-  c(2,2,2,2,1,1,1,1,1,1,3,3,3,3,3,3),
-  nrow = 16,
+  c(1,1,1,1,2,2,2,2,1,1,1,1,1,1,2,2,2,2,3,3,3,3,3,3),
+  nrow = 24,
   ncol = 1,
   byrow = TRUE
 )
@@ -190,8 +198,8 @@ pred_train <- predict_n(norm_samples_f)
 plot(norm_samples_f,col=pred_train,pch=pred_train)
 
 
-rand_points <<- matrix(data = runif(n = 2 * 100),
-                       nrow = 100,
+rand_points <<- matrix(data = runif(n = 2 * 500),
+                       nrow = 500,
                        ncol = 2)
 norm_rand_points <- scales::rescale(rand_points, to = c(0,1))
 pred_classes <- predict_n(norm_rand_points)
