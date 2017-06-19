@@ -2,7 +2,7 @@ set.seed(88)
 
 library(scales)
 
-ETA <<- 0.005
+ETA <<- 0.01
 
 # input layer
 NUM_FEATURES <<- 2
@@ -29,8 +29,8 @@ input_axon_w <<- matrix(data = runif(n = HIDDEN_LAYER_WIDTH * INPUT_WIDTH),
                         ncol = HIDDEN_LAYER_WIDTH)
 # hidden layer
 hidden_deltas <<- matrix(data = 1,
-                            nrow = HIDDEN_LAYER_WIDTH,
-                            ncol = 1)
+                         nrow = HIDDEN_LAYER_WIDTH,
+                         ncol = 1)
 hidden_activation <<- matrix(data = 1,
                              nrow = ANN_WIDTH,
                              ncol = 1)
@@ -39,39 +39,25 @@ hidden_axon_w <<- matrix(data = runif(n = ANN_WIDTH * OUTPUT_WIDTH),
                          ncol = OUTPUT_WIDTH)
 # output layer
 output_deltas <<- matrix(data = 1,
-                            nrow = OUTPUT_WIDTH,
-                            ncol = 1)
+                         nrow = OUTPUT_WIDTH,
+                         ncol = 1)
 output_activation <<- matrix(data = 1,
                              nrow = OUTPUT_WIDTH,
                              ncol = 1)
 
 activation_function <- function(x){
-  ex <- exp(x)
-  return(ex / (1 + ex))
-}
-
-activation_function_deriv <- function(x){
-  ex <- exp(x)
-  return(ex / (1 + ex) * (1 - (ex / (1 + ex))))
+  1/(1 + exp(-(x)))
 }
 
 forward_prop <- function(training_sample_features){
   # input layer
   input_activation <<- c(training_sample_features,1)
-  #print(input_activation)
-  for(hidden_idx in 1:HIDDEN_LAYER_WIDTH){
-    hidden_activation[hidden_idx] <<-
-      activation_function(t(input_activation) %*%
-                            input_axon_w[,hidden_idx])
-  }
-  #print(hidden_activation)
   
-  #output layer
-  for(output_idx in 1:OUTPUT_WIDTH){
-    output_activation[output_idx] <<-
-      activation_function(t(hidden_activation) %*%
-                            hidden_axon_w[,output_idx])
-  }
+  hidden_activation <<-
+    c(activation_function(t(input_axon_w) %*% input_activation),1)
+  
+  output_activation <<-
+    activation_function(t(hidden_axon_w) %*% hidden_activation)
 }
 
 encode_class <- function(sample_class){
@@ -88,28 +74,24 @@ calc_err <- function(sample_class){
 backward_prop <- function(sample_class){
   output_deltas <<- calc_err(sample_class)
   
-  for(hidden_idx in 1:HIDDEN_LAYER_WIDTH){
-    hidden_deltas[hidden_idx] <<-
-      activation_function_deriv(hidden_activation[hidden_idx]) *
-      (hidden_axon_w[hidden_idx,] %*%
-      output_deltas)
-  }
+  hidden_deltas <<-
+    hidden_axon_w %*%
+    output_deltas *
+    hidden_activation *
+    (1 - hidden_activation)
   
-  for(input_idx in 1:INPUT_WIDTH){
-    input_axon_w[input_idx,] <<-
-      input_axon_w[input_idx,] -
-      (ETA *
-      hidden_deltas[1:HIDDEN_LAYER_WIDTH] *
-      input_activation[input_idx])
-  }
+  input_axon_w <<-
+    input_axon_w -
+    ETA *
+    input_activation %*%
+    t(hidden_deltas[1:HIDDEN_LAYER_WIDTH])
   
-  for(hidden_idx in 1:ANN_WIDTH){
-    hidden_axon_w[hidden_idx,] <<-
-      hidden_axon_w[hidden_idx,] -
-      (ETA *
-      output_deltas *
-      hidden_activation[hidden_idx])
-  }
+  hidden_axon_w <<-
+    hidden_axon_w -
+    ETA *
+    hidden_activation %*%
+    t(output_deltas)
+  
   return(sqrt(sum((output_activation - encode_class(sample_class)) ^ 2)))
   #return(sum(output_deltas))
 }
@@ -162,7 +144,7 @@ samples_f <- matrix(
   byrow = TRUE)
 
 samples_c <- matrix(
-  c(1,1,1,1,1,1,1,1,3,3,3,3,3,3,3,3),
+  c(2,2,2,2,1,1,1,1,1,1,3,3,3,3,3,3),
   nrow = 16,
   ncol = 1,
   byrow = TRUE
