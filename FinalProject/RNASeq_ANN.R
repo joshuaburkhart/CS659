@@ -2,7 +2,7 @@ set.seed(88)
 
 library(scales)
 
-ETA <<- .1
+ETA <<- .5
 
 # input layer
 NUM_FEATURES <<- 2
@@ -11,16 +11,12 @@ INPUT_WIDTH <<- NUM_FEATURES + 1 # (bias)
 # hidden layers
 HIDDEN_LAYER_DEPTH <<- 3
 HIDDEN_CORE_DEPTH <<- HIDDEN_LAYER_DEPTH - 1 # special dims for final hidden layer
-HIDDEN_LAYER_WIDTH <<- 20
+HIDDEN_LAYER_WIDTH <<- 10
 ANN_WIDTH <<- HIDDEN_LAYER_WIDTH + 1 # (bias)
 
 # output layer
 NUM_CLASSES <<- 4
 OUTPUT_WIDTH <<- NUM_CLASSES
-
-# ----------------               -                -----------
-# num features + 1 (input axons) 6 (hidden1_axons) num classes
-# ----------------               -                -----------
 
 # input layer
 input_activation <<- matrix(data = 1,
@@ -151,25 +147,30 @@ backward_prop <- function(sample_class){
     t(output_deltas)
   
   return(sqrt(sum((output_activation - encode_class(sample_class)) ^ 2)))
-  #return(sum(output_deltas))
 }
 
 train <- function(training_samples_features, training_samples_classes){
   error_sum <- c()
-  for(x in 1:1000){
-    #ETA <<- ETA * 0.99
+  batch_errors <- c()
+  mean_error_sum <- c()
+  for(x in 1:500){
+    ETA <<- ETA * .999
     for(i in 1:nrow(training_samples_features)){
       forward_prop(training_samples_features[i,])
-      error_sum <- c(error_sum,backward_prop(training_samples_classes[i]))
+      error <- backward_prop(training_samples_classes[i])
+      error_sum <- c(error_sum,error)
+      batch_errors <- c(batch_errors,error)
     }
+    mean_error_sum <- c(mean_error_sum,rep(mean(batch_errors),nrow(training_samples_features)))
+    batch_errors <- c() #clear batch errors
   }
-  plot(error_sum,col=seq(1:nrow(training_samples_features)),pch = seq(1:nrow(training_samples_features)))
+  plot(error_sum, col = "black")#,col=seq(1:nrow(training_samples_features)),pch = seq(1:nrow(training_samples_features)))
+  points(mean_error_sum, col="red")
 }
 
 predict <- function(test_sample_features){
   forward_prop(test_sample_features)
   prediction <- output_activation
-  #print(output_activation)
   return(which(prediction == max(prediction)))
 }
 
@@ -219,8 +220,8 @@ samples_c <- matrix(
   byrow = TRUE
 )
 
-samples_f <- as.matrix(top2[,2:3])
-samples_c <- as.matrix(top2$tumor_stage)
+#samples_f <- as.matrix(top2[,2:3])
+#samples_c <- as.matrix(top2$tumor_stage)
 
 norm_samples_f <- scales::rescale(samples_f, to = c(0,1))
 train(norm_samples_f, samples_c)
