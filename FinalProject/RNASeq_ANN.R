@@ -2,14 +2,16 @@ set.seed(88)
 
 library(scales)
 
-ETA <<- 0.1
+ETA <<- .1
 
 # input layer
 NUM_FEATURES <<- 2
 INPUT_WIDTH <<- NUM_FEATURES + 1 # (bias)
 
-# hidden1 layer
-HIDDEN_LAYER_WIDTH <<- 15
+# hidden layers
+HIDDEN_LAYER_DEPTH <<- 3
+HIDDEN_CORE_DEPTH <<- HIDDEN_LAYER_DEPTH - 1 # special dims for final hidden layer
+HIDDEN_LAYER_WIDTH <<- 20
 ANN_WIDTH <<- HIDDEN_LAYER_WIDTH + 1 # (bias)
 
 # output layer
@@ -24,30 +26,31 @@ OUTPUT_WIDTH <<- NUM_CLASSES
 input_activation <<- matrix(data = 1,
                             nrow = INPUT_WIDTH,
                             ncol = 1)
-input_axon_w <<- matrix(data = runif(n = HIDDEN_LAYER_WIDTH * INPUT_WIDTH),
+input_axon_w <<- matrix(data = runif(n = HIDDEN_LAYER_WIDTH * INPUT_WIDTH, min = -1, max = 1),
                         nrow = INPUT_WIDTH,
                         ncol = HIDDEN_LAYER_WIDTH)
-# hidden layer 0
-hidden0_deltas <<- matrix(data = 1,
-                          nrow = HIDDEN_LAYER_WIDTH,
-                          ncol = 1)
-hidden0_activation <<- matrix(data = 1,
-                              nrow = ANN_WIDTH,
-                              ncol = 1)
-hidden0_axon_w <<- matrix(data = runif(n = ANN_WIDTH * HIDDEN_LAYER_WIDTH),
-                          nrow = ANN_WIDTH,
-                          ncol = HIDDEN_LAYER_WIDTH)
+# hidden core layers
+hidden_core_deltas <<- matrix(data = 1,
+                              nrow = HIDDEN_LAYER_WIDTH,
+                              ncol = HIDDEN_CORE_DEPTH)
+hidden_core_activation <<- matrix(data = 1,
+                                  nrow = ANN_WIDTH,
+                                  ncol = HIDDEN_CORE_DEPTH)
+hidden_core_axon_w <<- array(data = runif(n = ANN_WIDTH * HIDDEN_LAYER_WIDTH * HIDDEN_CORE_DEPTH, min = -1, max = 1),
+                             dim = c(ANN_WIDTH,
+                                     HIDDEN_LAYER_WIDTH,
+                                     HIDDEN_CORE_DEPTH))
 
-# hidden layer 1
-hidden1_deltas <<- matrix(data = 1,
-                         nrow = HIDDEN_LAYER_WIDTH,
-                         ncol = 1)
-hidden1_activation <<- matrix(data = 1,
-                             nrow = ANN_WIDTH,
-                             ncol = 1)
-hidden1_axon_w <<- matrix(data = runif(n = ANN_WIDTH * OUTPUT_WIDTH),
-                         nrow = ANN_WIDTH,
-                         ncol = OUTPUT_WIDTH)
+# hidden final layer
+hidden_final_deltas <<- matrix(data = 1,
+                               nrow = HIDDEN_LAYER_WIDTH,
+                               ncol = 1)
+hidden_final_activation <<- matrix(data = 1,
+                                   nrow = ANN_WIDTH,
+                                   ncol = 1)
+hidden_final_axon_w <<- matrix(data = runif(n = ANN_WIDTH * OUTPUT_WIDTH, min = 1, max = 1),
+                               nrow = ANN_WIDTH,
+                               ncol = OUTPUT_WIDTH)
 # output layer
 output_deltas <<- matrix(data = 1,
                          nrow = OUTPUT_WIDTH,
@@ -64,14 +67,23 @@ forward_prop <- function(training_sample_features){
   # input layer
   input_activation <<- c(training_sample_features,1)
   
-  hidden0_activation <<-
+  hidden_core_activation[,1] <<-
     c(activation_function(t(input_axon_w) %*% input_activation),1)
   
-  hidden1_activation <<-
-    c(activation_function(t(hidden0_axon_w) %*% hidden0_activation),1)
+  if(HIDDEN_CORE_DEPTH > 1){
+    for(core_layer in 2:HIDDEN_CORE_DEPTH){
+      hidden_core_activation[,core_layer] <<-
+        c(activation_function(t(hidden_core_axon_w[,,core_layer - 1]) %*%
+                                hidden_core_activation[,core_layer - 1]),1)
+    }
+  }
+  
+  hidden_final_activation <<-
+    c(activation_function(t(hidden_core_axon_w[,,HIDDEN_CORE_DEPTH]) %*%
+                            hidden_core_activation[,HIDDEN_CORE_DEPTH]),1)
   
   output_activation <<-
-    activation_function(t(hidden1_axon_w) %*% hidden1_activation)
+    activation_function(t(hidden_final_axon_w) %*% hidden_final_activation)
 }
 
 encode_class <- function(sample_class){
@@ -88,34 +100,54 @@ calc_err <- function(sample_class){
 backward_prop <- function(sample_class){
   output_deltas <<- calc_err(sample_class)
   
-  hidden1_deltas <<-
-    hidden1_axon_w %*%
-    output_deltas *
-    hidden1_activation *
-    (1 - hidden1_activation)
+  hidden_final_deltas <<-        
+    hidden_final_axon_w[1:HIDDEN_LAYER_WIDTH,] %*%      
+    output_deltas *             
+    (hidden_final_activation[1:HIDDEN_LAYER_WIDTH] *    
+       (1 - hidden_final_activation[1:HIDDEN_LAYER_WIDTH]))
   
-  hidden0_deltas <<-
-    hidden0_axon_w %*%
-    hidden1_deltas[1:HIDDEN_LAYER_WIDTH] *
-    hidden0_activation *
-    (1 - hidden0_activation)
+  hidden_core_deltas[,HIDDEN_CORE_DEPTH] <<-         
+    hidden_core_axon_w[1:HIDDEN_LAYER_WIDTH,,HIDDEN_CORE_DEPTH] %*%     
+    hidden_final_deltas *                            
+    (hidden_core_activation[1:HIDDEN_LAYER_WIDTH,HIDDEN_CORE_DEPTH] *     
+       (1 - hidden_core_activation[1:HIDDEN_LAYER_WIDTH,HIDDEN_CORE_DEPTH]))  
+  
+  if(HIDDEN_CORE_DEPTH > 1){
+    for(core_layer in (HIDDEN_CORE_DEPTH - 1):1){
+      hidden_core_deltas[,core_layer] <<-
+        hidden_core_axon_w[1:HIDDEN_LAYER_WIDTH,,core_layer] %*%
+        hidden_core_deltas[,core_layer + 1] *
+        (hidden_core_activation[1:HIDDEN_LAYER_WIDTH,core_layer] *
+           (1 - hidden_core_activation[1:HIDDEN_LAYER_WIDTH,core_layer]))
+    }
+  }
   
   input_axon_w <<-
     input_axon_w -
     ETA *
     input_activation %*%
-    t(hidden0_deltas[1:HIDDEN_LAYER_WIDTH])
+    t(hidden_core_deltas[1:HIDDEN_LAYER_WIDTH,1])
   
-  hidden0_axon_w <<-
-    hidden0_axon_w -
-    ETA *
-    hidden0_activation %*%
-    t(hidden1_deltas[1:HIDDEN_LAYER_WIDTH])
+  if(HIDDEN_CORE_DEPTH > 1){
+    for(core_layer in 1:(HIDDEN_CORE_DEPTH - 1)){
+      hidden_core_axon_w[,,core_layer] <<-
+        hidden_core_axon_w[,,core_layer] -
+        ETA *
+        hidden_core_activation[,core_layer] %*%
+        t(hidden_core_deltas[1:HIDDEN_LAYER_WIDTH,core_layer + 1])
+    }
+  }
   
-  hidden1_axon_w <<-
-    hidden1_axon_w -
+  hidden_core_axon_w[,,HIDDEN_CORE_DEPTH] <<-     
+    hidden_core_axon_w[,,HIDDEN_CORE_DEPTH] -     
+    ETA *                                           
+    hidden_core_activation[,HIDDEN_CORE_DEPTH] %*%
+    t(hidden_final_deltas[1:HIDDEN_LAYER_WIDTH])
+  
+  hidden_final_axon_w <<-
+    hidden_final_axon_w -
     ETA *
-    hidden1_activation %*%
+    hidden_final_activation %*%
     t(output_deltas)
   
   return(sqrt(sum((output_activation - encode_class(sample_class)) ^ 2)))
@@ -125,12 +157,13 @@ backward_prop <- function(sample_class){
 train <- function(training_samples_features, training_samples_classes){
   error_sum <- c()
   for(x in 1:1000){
+    #ETA <<- ETA * 0.99
     for(i in 1:nrow(training_samples_features)){
       forward_prop(training_samples_features[i,])
       error_sum <- c(error_sum,backward_prop(training_samples_classes[i]))
     }
   }
-  plot(error_sum)
+  plot(error_sum,col=seq(1:nrow(training_samples_features)),pch = seq(1:nrow(training_samples_features)))
 }
 
 predict <- function(test_sample_features){
@@ -186,8 +219,8 @@ samples_c <- matrix(
   byrow = TRUE
 )
 
-#samples_f <- as.matrix(top2[,2:3])
-#samples_c <- as.matrix(top2$tumor_stage)
+samples_f <- as.matrix(top2[,2:3])
+samples_c <- as.matrix(top2$tumor_stage)
 
 norm_samples_f <- scales::rescale(samples_f, to = c(0,1))
 train(norm_samples_f, samples_c)
