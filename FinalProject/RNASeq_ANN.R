@@ -2,16 +2,18 @@ set.seed(88)
 
 library(scales)
 
-ETA <<- .5
+NUM_TRAIN_IT <<- 750
+ETA <<- 1/NUM_TRAIN_IT
+RAND_POINTS <<- 500 # displays decision boundary
 
 # input layer
-NUM_FEATURES <<- 2
+NUM_FEATURES <<- 3
 INPUT_WIDTH <<- NUM_FEATURES + 1 # (bias)
 
 # hidden layers
 HIDDEN_LAYER_DEPTH <<- 3
 HIDDEN_CORE_DEPTH <<- HIDDEN_LAYER_DEPTH - 1 # special dims for final hidden layer
-HIDDEN_LAYER_WIDTH <<- 10
+HIDDEN_LAYER_WIDTH <<- 30
 ANN_WIDTH <<- HIDDEN_LAYER_WIDTH + 1 # (bias)
 
 # output layer
@@ -153,14 +155,20 @@ train <- function(training_samples_features, training_samples_classes){
   error_sum <- c()
   batch_errors <- c()
   mean_error_sum <- c()
-  for(x in 1:500){
-    ETA <<- ETA * .999
-    for(i in 1:nrow(training_samples_features)){
+  for(x in 1:NUM_TRAIN_IT){
+     for(i in 1:nrow(training_samples_features)){
+      i <- ceiling(runif(n=1,min=0,max=nrow(training_samples_features)))
       forward_prop(training_samples_features[i,])
       error <- backward_prop(training_samples_classes[i])
       error_sum <- c(error_sum,error)
       batch_errors <- c(batch_errors,error)
-    }
+     }
+    mbe <- mean(batch_errors)
+    print(paste("MBE: ",mbe,sep=""))
+    zeta <- (mbe / (2 * 3^(1/2)))
+    print(paste("ZETA: ",zeta,sep=""))
+    ETA <<- zeta#/nrow(training_samples_features) #zeta # diagonal of 2u cube (norm max)
+    print(paste("ETA: ",ETA,sep=""))
     mean_error_sum <- c(mean_error_sum,rep(mean(batch_errors),nrow(training_samples_features)))
     batch_errors <- c() #clear batch errors
   }
@@ -185,32 +193,32 @@ predict_n <- function(test_samples_features){
 load("~/SoftwareProjects/CellFusionAnalysis/src/PrognosticPredictor/rna_seq/top2.rda")
 
 samples_f <- matrix(
-  c(.1,.6,
-    .1,.7,
-    .1,.8,
-    .1,.9,
-    0,0,
-    0,.2,
-    .3,.3,
-    .3,.3,
-    .3,.1,
-    .6,.15,
-    .6,.2,
-    .6,.3,
-    .6,.1,
-    .6,.35,
-    .7,.6,
-    .7,.7,
-    .7,.8,
-    .7,.9,
-    .8,.8,
-    .8,.25,
-    .8,.1,
-    .8,.3,
-    .8,.2,
-    .8,.4),
+  c(.1,.6,1,
+    .1,.7,1,
+    .1,.8,1,
+    .1,.9,1,
+    0,0,1,
+    0,.2,1,
+    .3,.3,1,
+    .3,.3,1,
+    .3,.1,1,
+    .6,.15,1,
+    .6,.2,1,
+    .6,.3,1,
+    .6,.1,1,
+    .6,.35,1,
+    .7,.6,1,
+    .7,.7,1,
+    .7,.8,1,
+    .7,.9,1,
+    .8,.8,1,
+    .8,.25,1,
+    .8,.1,1,
+    .8,.3,1,
+    .8,.2,1,
+    .8,.4,1),
   nrow = 24,
-  ncol = 2,
+  ncol = NUM_FEATURES,
   byrow = TRUE)
 
 samples_c <- matrix(
@@ -226,15 +234,15 @@ samples_c <- matrix(
 norm_samples_f <- scales::rescale(samples_f, to = c(0,1))
 train(norm_samples_f, samples_c)
 
-plot(norm_samples_f,col=samples_c,pch=samples_c)
+plot(norm_samples_f[,1:2],col=samples_c,pch=samples_c)
 
 pred_train <- predict_n(norm_samples_f)
-plot(norm_samples_f,col=pred_train,pch=pred_train)
+plot(norm_samples_f[,1:2],col=pred_train,pch=pred_train)
 
 
-rand_points <<- matrix(data = runif(n = 2 * 500),
-                       nrow = 500,
-                       ncol = 2)
+rand_points <<- matrix(data = runif(n = NUM_FEATURES * RAND_POINTS),
+                       nrow = RAND_POINTS,
+                       ncol = NUM_FEATURES)
 norm_rand_points <- scales::rescale(rand_points, to = c(0,1))
 pred_classes <- predict_n(norm_rand_points)
-plot(norm_rand_points,col=pred_classes,pch=pred_classes)
+plot(norm_rand_points[,1:2],col=pred_classes,pch=pred_classes)
