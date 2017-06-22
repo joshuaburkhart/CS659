@@ -176,7 +176,7 @@ train <- function(training_samples_features, training_samples_classes){
   points(mean_error_sum, col="red")
 }
 
-predict <- function(test_sample_features){
+predict1 <- function(test_sample_features){
   forward_prop(test_sample_features)
   prediction <- output_activation
   return(which(prediction == max(prediction)))
@@ -185,7 +185,7 @@ predict <- function(test_sample_features){
 predict_n <- function(test_samples_features){
   ps <- c()
   for(i in 1:nrow(test_samples_features)){
-    ps <- c(ps,predict(test_samples_features[i,]))
+    ps <- c(ps,predict1(test_samples_features[i,]))
   }
   return(ps)
 }
@@ -252,3 +252,30 @@ plot(norm_rand_points[,1:2],col=pred_classes,pch=pred_classes,main="Decision Bou
 
 training_misclass_rate <- sum(samples_c != pred_train) / length(pred_train)
 print(training_misclass_rate)
+
+library(nnet)
+
+nn_norm_features <- scales::rescale(as.matrix(top2[rand_row_order,2:10]),to=c(0,1))
+nn_classes <- as.factor(top2[rand_row_order,11])
+
+nn_df <- top2 %>%
+  dplyr::mutate(y = as.factor(as.character(tumor_stage))) %>%
+  dplyr::select(y,
+                ENSG00000085733,
+                ENSG00000105568,
+                ENSG00000165949,
+                ENSG00000205542,
+                ENSG00000106153,
+                ENSG00000072778,
+                ENSG00000108679,
+                ENSG00000117984,
+                ENSG00000152234) 
+
+nn_model <- nnet::nnet(formula = y~.,data=nn_df,size=c(15,15,15),maxitr=2500)
+
+train_pred <- predict(object=nn_model,newdata=norm_samples_f)
+
+
+
+
+
