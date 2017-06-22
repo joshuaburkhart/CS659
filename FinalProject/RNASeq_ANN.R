@@ -2,12 +2,12 @@ set.seed(88)
 
 library(scales)
 
-NUM_TRAIN_IT <<- 750
+NUM_TRAIN_IT <<- 2500
 ETA <<- 1/NUM_TRAIN_IT
 RAND_POINTS <<- 500 # displays decision boundary
 
 # input layer
-NUM_FEATURES <<- 3
+NUM_FEATURES <<- 9
 INPUT_WIDTH <<- NUM_FEATURES + 1 # (bias)
 
 # hidden layers
@@ -157,7 +157,7 @@ train <- function(training_samples_features, training_samples_classes){
   mean_error_sum <- c()
   for(x in 1:NUM_TRAIN_IT){
      for(i in 1:nrow(training_samples_features)){
-      i <- ceiling(runif(n=1,min=0,max=nrow(training_samples_features)))
+      #i <- ceiling(runif(n=1,min=0,max=nrow(training_samples_features)))
       forward_prop(training_samples_features[i,])
       error <- backward_prop(training_samples_classes[i])
       error_sum <- c(error_sum,error)
@@ -172,7 +172,7 @@ train <- function(training_samples_features, training_samples_classes){
     mean_error_sum <- c(mean_error_sum,rep(mean(batch_errors),nrow(training_samples_features)))
     batch_errors <- c() #clear batch errors
   }
-  plot(error_sum, col = "black")#,col=seq(1:nrow(training_samples_features)),pch = seq(1:nrow(training_samples_features)))
+  plot(error_sum, col = "black",main="Individual (Black) & Mean (Red) Errors")#,col=seq(1:nrow(training_samples_features)),pch = seq(1:nrow(training_samples_features)))
   points(mean_error_sum, col="red")
 }
 
@@ -190,33 +190,33 @@ predict_n <- function(test_samples_features){
   return(ps)
 }
 
-load("~/SoftwareProjects/CellFusionAnalysis/src/PrognosticPredictor/rna_seq/top2.rda")
+load("~/SoftwareProjects/CellFusionAnalysis/src/PrognosticPredictor/rna_seq/top10.rda")
 
 samples_f <- matrix(
-  c(.1,.6,1,
-    .1,.7,1,
-    .1,.8,1,
-    .1,.9,1,
-    0,0,1,
-    0,.2,1,
-    .3,.3,1,
-    .3,.3,1,
-    .3,.1,1,
-    .6,.15,1,
-    .6,.2,1,
-    .6,.3,1,
-    .6,.1,1,
-    .6,.35,1,
-    .7,.6,1,
-    .7,.7,1,
-    .7,.8,1,
-    .7,.9,1,
-    .8,.8,1,
-    .8,.25,1,
-    .8,.1,1,
-    .8,.3,1,
-    .8,.2,1,
-    .8,.4,1),
+  c(.1,.6,1,1,1,1,1,1,1,
+    .1,.7,1,1,1,1,1,1,1,
+    .1,.8,1,1,1,1,1,1,1,
+    .1,.9,1,1,1,1,1,1,1,
+    0,0,1,1,1,1,1,1,1,
+    0,.2,1,1,1,1,1,1,1,
+    .3,.3,1,1,1,1,1,1,1,
+    .3,.3,1,1,1,1,1,1,1,
+    .3,.1,1,1,1,1,1,1,1,
+    .6,.15,1,1,1,1,1,1,1,
+    .6,.2,1,1,1,1,1,1,1,
+    .6,.3,1,1,1,1,1,1,1,
+    .6,.1,1,1,1,1,1,1,1,
+    .6,.35,1,1,1,1,1,1,1,
+    .7,.6,1,1,1,1,1,1,1,
+    .7,.7,1,1,1,1,1,1,1,
+    .7,.8,1,1,1,1,1,1,1,
+    .7,.9,1,1,1,1,1,1,1,
+    .8,.8,1,1,1,1,1,1,1,
+    .8,.25,1,1,1,1,1,1,1,
+    .8,.1,1,1,1,1,1,1,1,
+    .8,.3,1,1,1,1,1,1,1,
+    .8,.2,1,1,1,1,1,1,1,
+    .8,.4,1,1,1,1,1,1,1),
   nrow = 24,
   ncol = NUM_FEATURES,
   byrow = TRUE)
@@ -228,16 +228,18 @@ samples_c <- matrix(
   byrow = TRUE
 )
 
-#samples_f <- as.matrix(top2[,2:3])
-#samples_c <- as.matrix(top2$tumor_stage)
+rand_row_order <- sample(105,replace = FALSE)
+
+samples_f <- as.matrix(top2[rand_row_order,2:10])
+samples_c <- as.matrix(top2[rand_row_order,"tumor_stage"])
 
 norm_samples_f <- scales::rescale(samples_f, to = c(0,1))
 train(norm_samples_f, samples_c)
 
-plot(norm_samples_f[,1:2],col=samples_c,pch=samples_c)
+plot(norm_samples_f[,1:2],col=samples_c,pch=samples_c,main="True Labels")
 
 pred_train <- predict_n(norm_samples_f)
-plot(norm_samples_f[,1:2],col=pred_train,pch=pred_train)
+plot(norm_samples_f[,1:2],col=pred_train,pch=pred_train,main="Predicted Labels")
 
 
 rand_points <<- matrix(data = runif(n = NUM_FEATURES * RAND_POINTS),
@@ -245,4 +247,8 @@ rand_points <<- matrix(data = runif(n = NUM_FEATURES * RAND_POINTS),
                        ncol = NUM_FEATURES)
 norm_rand_points <- scales::rescale(rand_points, to = c(0,1))
 pred_classes <- predict_n(norm_rand_points)
-plot(norm_rand_points[,1:2],col=pred_classes,pch=pred_classes)
+plot(norm_rand_points[,1:2],col=pred_classes,pch=pred_classes,main="Decision Boundary")
+
+
+training_misclass_rate <- sum(samples_c != pred_train) / length(pred_train)
+print(training_misclass_rate)
