@@ -295,13 +295,31 @@ norm_rand_points <- scales::rescale(rand_points, to = c(0,1))
 norm_rand_points_df <- data.frame(norm_rand_points)
 colnames(norm_rand_points_df) <- colnames(nn_df[,1:9])
 nn_pred_classes <- predict(object=nn_model,newdata=norm_rand_points_df)
-pred_vec <- c()
+pred_vec2 <- c()
 for(i in 1:nrow(nn_pred_classes)){
-  pred_vec <- c(pred_vec,which(nn_pred_classes[i,] == max(nn_pred_classes[i,])))
+  pred_vec2 <- c(pred_vec2,which(nn_pred_classes[i,] == max(nn_pred_classes[i,])))
 }
-plot(norm_rand_points[,1:2],col=pred_vec,pch=pred_vec,main="nnet Decision Boundary")
+plot(norm_rand_points[,1:2],col=pred_vec2,pch=pred_vec2,main="nnet Decision Boundary")
 
+library(pROC)
+mroc <- pROC::multiclass.roc(response=as.numeric(nn_df$y),predictor=as.numeric(pred_vec))
+for(roc in 1:length(mroc$rocs)){
+  pROC::plot.roc(mroc$rocs[[roc]],main=paste("nnet AUC = ",
+                                             round(auc(mroc$rocs[[roc]]),digits=3),
+                                             " for Stages ",
+                                             mroc$rocs[[roc]]$levels[1],
+                                             " and ",
+                                             mroc$rocs[[roc]]$levels[2],
+                                             sep=""))
+}
 
-
-
-
+mroc <- pROC::multiclass.roc(response=as.numeric(samples_c),predictor=as.numeric(pred_train))
+for(roc in 1:length(mroc$rocs)){
+  pROC::plot.roc(mroc$rocs[[roc]],main=paste("AUC = ",
+                                             round(auc(mroc$rocs[[roc]]),digits=3),
+                                             " for Stages ",
+                                             mroc$rocs[[roc]]$levels[1],
+                                             " and ",
+                                             mroc$rocs[[roc]]$levels[2],
+                                             sep=""))
+}
