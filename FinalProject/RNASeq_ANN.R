@@ -6,14 +6,14 @@ NUM_TRAIN_IT <<- 2500
 ETA <<- 1/NUM_TRAIN_IT
 RAND_POINTS <<- 500 # displays decision boundary
 MBE_THRESH <<- 0.05
-RNA_SEQ_ANALYSIS <<- 0
+RNA_SEQ_ANALYSIS <<- 1
 
 # input layer
 NUM_FEATURES <<- 9
 INPUT_WIDTH <<- NUM_FEATURES + 1 # (bias)
 
 # hidden layers
-HIDDEN_LAYER_DEPTH <<- 1
+HIDDEN_LAYER_DEPTH <<- 3
 HIDDEN_CORE_DEPTH <<- HIDDEN_LAYER_DEPTH - 1 # special dims for final hidden layer
 HIDDEN_LAYER_WIDTH <<- 30
 ANN_WIDTH <<- HIDDEN_LAYER_WIDTH + 1 # (bias)
@@ -211,40 +211,40 @@ predict_n <- function(test_samples_features){
 }
 
 # Example Data
-samples_f <- matrix(
-  c(.1,.6,1,1,1,1,1,1,1,
-    .1,.7,1,1,1,1,1,1,1,
-    .1,.8,1,1,1,1,1,1,1,
-    .1,.9,1,1,1,1,1,1,1,
-    0,0,1,1,1,1,1,1,1,
-    0,.2,1,1,1,1,1,1,1,
-    .3,.3,1,1,1,1,1,1,1,
-    .3,.3,1,1,1,1,1,1,1,
-    .3,.1,1,1,1,1,1,1,1,
-    .6,.15,1,1,1,1,1,1,1,
-    .6,.2,1,1,1,1,1,1,1,
-    .6,.3,1,1,1,1,1,1,1,
-    .6,.1,1,1,1,1,1,1,1,
-    .6,.35,1,1,1,1,1,1,1,
-    .7,.6,1,1,1,1,1,1,1,
-    .7,.7,1,1,1,1,1,1,1,
-    .7,.8,1,1,1,1,1,1,1,
-    .7,.9,1,1,1,1,1,1,1,
-    .8,.8,1,1,1,1,1,1,1,
-    .8,.25,1,1,1,1,1,1,1,
-    .8,.1,1,1,1,1,1,1,1,
-    .8,.3,1,1,1,1,1,1,1,
-    .8,.2,1,1,1,1,1,1,1,
-    .8,.4,1,1,1,1,1,1,1),
-  nrow = 24,
-  ncol = NUM_FEATURES,
-  byrow = TRUE)
-samples_c <- matrix(
-  c(1,1,1,1,2,2,2,2,1,1,1,1,1,1,2,2,2,2,3,3,3,3,3,3),
-  nrow = 24,
-  ncol = 1,
-  byrow = TRUE
-)
+# samples_f <- matrix(
+#   c(.1,.6,1,1,1,1,1,1,1,
+#     .1,.7,1,1,1,1,1,1,1,
+#     .1,.8,1,1,1,1,1,1,1,
+#     .1,.9,1,1,1,1,1,1,1,
+#     0,0,1,1,1,1,1,1,1,
+#     0,.2,1,1,1,1,1,1,1,
+#     .3,.3,1,1,1,1,1,1,1,
+#     .3,.3,1,1,1,1,1,1,1,
+#     .3,.1,1,1,1,1,1,1,1,
+#     .6,.15,1,1,1,1,1,1,1,
+#     .6,.2,1,1,1,1,1,1,1,
+#     .6,.3,1,1,1,1,1,1,1,
+#     .6,.1,1,1,1,1,1,1,1,
+#     .6,.35,1,1,1,1,1,1,1,
+#     .7,.6,1,1,1,1,1,1,1,
+#     .7,.7,1,1,1,1,1,1,1,
+#     .7,.8,1,1,1,1,1,1,1,
+#     .7,.9,1,1,1,1,1,1,1,
+#     .8,.8,1,1,1,1,1,1,1,
+#     .8,.25,1,1,1,1,1,1,1,
+#     .8,.1,1,1,1,1,1,1,1,
+#     .8,.3,1,1,1,1,1,1,1,
+#     .8,.2,1,1,1,1,1,1,1,
+#     .8,.4,1,1,1,1,1,1,1),
+#   nrow = 24,
+#   ncol = NUM_FEATURES,
+#   byrow = TRUE)
+# samples_c <- matrix(
+#   c(1,1,1,1,2,2,2,2,1,1,1,1,1,1,2,2,2,2,3,3,3,3,3,3),
+#   nrow = 24,
+#   ncol = 1,
+#   byrow = TRUE
+# )
 
 # RNASeq Data
 rand_row_order <- sample(105,replace = FALSE)
@@ -270,48 +270,48 @@ training_misclass_rate <- sum(samples_c != pred_train) / length(pred_train)
 print(paste("Train Misclass Rate: ",training_misclass_rate,sep=""))
 
 # other ANN
-library(nnet)
-library(magrittr)
-
-nn_df <- data.frame(norm_samples_f)
-nn_df$y <- as.factor(samples_c)
-
-nn_model <- nnet::nnet(formula = y~.,
-                       data=nn_df,
-                       size=30,
-                       maxitr=2500)
-nn_train_pred <- predict(object=nn_model,newdata=nn_df[,1:9])
-pred_vec <- c()
-for(i in 1:nrow(nn_train_pred)){
-  pred_vec <- c(pred_vec,which(nn_train_pred[i,] == max(nn_train_pred[i,])))
-}
-plot(nn_df[,1:2],col=pred_vec,pch=pred_vec,main="nnet Predicted Labels")
-nn_training_misclass_rate <- sum(as.numeric(nn_df$y) != pred_vec) / length(pred_vec)
-print(paste("nnet Train Misclass Rate: ",nn_training_misclass_rate,sep=""))
-rand_points <<- matrix(data = runif(n = NUM_FEATURES * RAND_POINTS),
-                       nrow = RAND_POINTS,
-                       ncol = NUM_FEATURES)
-norm_rand_points <- scales::rescale(rand_points, to = c(0,1))
-norm_rand_points_df <- data.frame(norm_rand_points)
-colnames(norm_rand_points_df) <- colnames(nn_df[,1:9])
-nn_pred_classes <- predict(object=nn_model,newdata=norm_rand_points_df)
-pred_vec2 <- c()
-for(i in 1:nrow(nn_pred_classes)){
-  pred_vec2 <- c(pred_vec2,which(nn_pred_classes[i,] == max(nn_pred_classes[i,])))
-}
-plot(norm_rand_points[,1:2],col=pred_vec2,pch=pred_vec2,main="nnet Decision Boundary")
+# library(nnet)
+# library(magrittr)
+# 
+# nn_df <- data.frame(norm_samples_f)
+# nn_df$y <- as.factor(samples_c)
+# 
+# nn_model <- nnet::nnet(formula = y~.,
+#                        data=nn_df,
+#                        size=30,
+#                        maxitr=2500)
+# nn_train_pred <- predict(object=nn_model,newdata=nn_df[,1:9])
+# pred_vec <- c()
+# for(i in 1:nrow(nn_train_pred)){
+#   pred_vec <- c(pred_vec,which(nn_train_pred[i,] == max(nn_train_pred[i,])))
+# }
+# plot(nn_df[,1:2],col=pred_vec,pch=pred_vec,main="nnet Predicted Labels")
+# nn_training_misclass_rate <- sum(as.numeric(nn_df$y) != pred_vec) / length(pred_vec)
+# print(paste("nnet Train Misclass Rate: ",nn_training_misclass_rate,sep=""))
+# rand_points <<- matrix(data = runif(n = NUM_FEATURES * RAND_POINTS),
+#                        nrow = RAND_POINTS,
+#                        ncol = NUM_FEATURES)
+# norm_rand_points <- scales::rescale(rand_points, to = c(0,1))
+# norm_rand_points_df <- data.frame(norm_rand_points)
+# colnames(norm_rand_points_df) <- colnames(nn_df[,1:9])
+# nn_pred_classes <- predict(object=nn_model,newdata=norm_rand_points_df)
+# pred_vec2 <- c()
+# for(i in 1:nrow(nn_pred_classes)){
+#   pred_vec2 <- c(pred_vec2,which(nn_pred_classes[i,] == max(nn_pred_classes[i,])))
+# }
+# plot(norm_rand_points[,1:2],col=pred_vec2,pch=pred_vec2,main="nnet Decision Boundary")
 
 library(pROC)
-mroc <- pROC::multiclass.roc(response=as.numeric(nn_df$y),predictor=as.numeric(pred_vec))
-for(roc in 1:length(mroc$rocs)){
-  pROC::plot.roc(mroc$rocs[[roc]],main=paste("nnet AUC = ",
-                                             round(auc(mroc$rocs[[roc]]),digits=3),
-                                             " for Stages ",
-                                             mroc$rocs[[roc]]$levels[1],
-                                             " and ",
-                                             mroc$rocs[[roc]]$levels[2],
-                                             sep=""))
-}
+# mroc <- pROC::multiclass.roc(response=as.numeric(nn_df$y),predictor=as.numeric(pred_vec))
+# for(roc in 1:length(mroc$rocs)){
+#  pROC::plot.roc(mroc$rocs[[roc]],main=paste("nnet AUC = ",
+#                                             round(auc(mroc$rocs[[roc]]),digits=3),
+#                                             " for Stages ",
+#                                             mroc$rocs[[roc]]$levels[1],
+#                                             " and ",
+#                                             mroc$rocs[[roc]]$levels[2],
+#                                             sep=""))
+# }
 
 mroc <- pROC::multiclass.roc(response=as.numeric(samples_c),predictor=as.numeric(pred_train))
 for(roc in 1:length(mroc$rocs)){
