@@ -229,8 +229,8 @@ samples_c <- matrix(
 # RNASeq Data
 rand_row_order <- sample(105,replace = FALSE)
 load("~/SoftwareProjects/CellFusionAnalysis/src/PrognosticPredictor/rna_seq/top10.rda")
-samples_f <- as.matrix(top2[rand_row_order,2:10])
-samples_c <- as.matrix(top2[rand_row_order,"tumor_stage"])
+#samples_f <- as.matrix(top2[rand_row_order,2:10])
+#samples_c <- as.matrix(top2[rand_row_order,"tumor_stage"])
 norm_samples_f <- scales::rescale(samples_f, to = c(0,1))
 
 # my ANN
@@ -250,38 +250,34 @@ print(paste("Train Misclass Rate: ",training_misclass_rate,sep=""))
 # other ANN
 library(nnet)
 library(magrittr)
-nn_norm_features <- scales::rescale(as.matrix(top2[rand_row_order,2:10]),to=c(0,1))
-nn_classes <- as.factor(as.matrix(top2[rand_row_order,11]))
-nn_df <- top2 %>%
-  dplyr::mutate(y = as.factor(as.character(tumor_stage))) %>%
-  dplyr::select(y,
-                ENSG00000085733,
-                ENSG00000105568,
-                ENSG00000165949,
-                ENSG00000205542,
-                ENSG00000106153,
-                ENSG00000072778,
-                ENSG00000108679,
-                ENSG00000117984,
-                ENSG00000152234) 
 
-nn_df$ENSG00000085733 <- scales::rescale(nn_df$ENSG00000085733,to=c(0,1))
-nn_df$ENSG00000105568 <- scales::rescale(nn_df$ENSG00000105568,to=c(0,1))
-nn_df$ENSG00000165949 <- scales::rescale(nn_df$ENSG00000165949,to=c(0,1))
-nn_df$ENSG00000205542 <- scales::rescale(nn_df$ENSG00000205542,to=c(0,1))
-nn_df$ENSG00000106153 <- scales::rescale(nn_df$ENSG00000106153,to=c(0,1))
-nn_df$ENSG00000072778 <- scales::rescale(nn_df$ENSG00000072778,to=c(0,1))
-nn_df$ENSG00000108679 <- scales::rescale(nn_df$ENSG00000108679,to=c(0,1))
-nn_df$ENSG00000117984 <- scales::rescale(nn_df$ENSG00000117984,to=c(0,1))
-nn_df$ENSG00000152234 <- scales::rescale(nn_df$ENSG00000152234,to=c(0,1))
+nn_df <- data.frame(norm_samples_f)
+nn_df$y <- as.factor(samples_c)
 
 nn_model <- nnet::nnet(formula = y~.,
                        data=nn_df,
                        size=30,
                        maxitr=2500)
-nn_train_pred <- predict(object=nn_model,newdata=nn_df[,2:10])
-nn_training_misclass_rate <- sum(nn_df$y != round(nn_train_pred)) / length(nn_train_pred)
-print(paste("Comp. Train Misclass Rate: ",nn_training_misclass_rate,sep=""))
+nn_train_pred <- round(predict(object=nn_model,newdata=nn_df[,1:9]))
+pred_vec <- c()
+for(i in 1:nrow(nn_train_pred)){
+  pred_vec <- c(pred_vec,which(nn_train_pred[i,] == max(nn_train_pred[i,])))
+}
+plot(nn_df[,1:2],col=pred_vec,pch=pred_vec,main="nnet Predicted Labels")
+nn_training_misclass_rate <- sum(as.numeric(nn_df$y) != pred_vec) / length(pred_vec)
+print(paste("nnet Train Misclass Rate: ",nn_training_misclass_rate,sep=""))
+rand_points <<- matrix(data = runif(n = NUM_FEATURES * RAND_POINTS),
+                       nrow = RAND_POINTS,
+                       ncol = NUM_FEATURES)
+norm_rand_points <- scales::rescale(rand_points, to = c(0,1))
+norm_rand_points_df <- data.frame(norm_rand_points)
+colnames(norm_rand_points_df) <- colnames(nn_df[,1:9])
+nn_pred_classes <- predict(object=nn_model,newdata=norm_rand_points_df)
+pred_vec <- c()
+for(i in 1:nrow(nn_pred_classes)){
+  pred_vec <- c(pred_vec,which(nn_pred_classes[i,] == max(nn_pred_classes[i,])))
+}
+plot(norm_rand_points[,1:2],col=pred_vec,pch=pred_vec,main="nn Decision Boundary")
 
 
 
