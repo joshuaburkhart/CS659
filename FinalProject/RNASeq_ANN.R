@@ -164,11 +164,11 @@ train <- function(training_samples_features, training_samples_classes){
       batch_errors <- c(batch_errors,error)
      }
     mbe <- mean(batch_errors)
-    print(paste("MBE: ",mbe,sep=""))
+    print(paste("MBE ",x,": ",mbe,sep=""))
     zeta <- (mbe / (2 * 3^(1/2)))
-    print(paste("ZETA: ",zeta,sep=""))
+    #print(paste("ZETA: ",zeta,sep=""))
     ETA <<- zeta#/nrow(training_samples_features) #zeta # diagonal of 2u cube (norm max)
-    print(paste("ETA: ",ETA,sep=""))
+    #print(paste("ETA: ",ETA,sep=""))
     mean_error_sum <- c(mean_error_sum,rep(mean(batch_errors),nrow(training_samples_features)))
     batch_errors <- c() #clear batch errors
   }
@@ -190,8 +190,7 @@ predict_n <- function(test_samples_features){
   return(ps)
 }
 
-load("~/SoftwareProjects/CellFusionAnalysis/src/PrognosticPredictor/rna_seq/top10.rda")
-
+# Example Data
 samples_f <- matrix(
   c(.1,.6,1,1,1,1,1,1,1,
     .1,.7,1,1,1,1,1,1,1,
@@ -220,7 +219,6 @@ samples_f <- matrix(
   nrow = 24,
   ncol = NUM_FEATURES,
   byrow = TRUE)
-
 samples_c <- matrix(
   c(1,1,1,1,2,2,2,2,1,1,1,1,1,1,2,2,2,2,3,3,3,3,3,3),
   nrow = 24,
@@ -228,36 +226,32 @@ samples_c <- matrix(
   byrow = TRUE
 )
 
+# RNASeq Data
 rand_row_order <- sample(105,replace = FALSE)
-
+load("~/SoftwareProjects/CellFusionAnalysis/src/PrognosticPredictor/rna_seq/top10.rda")
 samples_f <- as.matrix(top2[rand_row_order,2:10])
 samples_c <- as.matrix(top2[rand_row_order,"tumor_stage"])
-
 norm_samples_f <- scales::rescale(samples_f, to = c(0,1))
+
+# my ANN
 train(norm_samples_f, samples_c)
-
 plot(norm_samples_f[,1:2],col=samples_c,pch=samples_c,main="True Labels")
-
 pred_train <- predict_n(norm_samples_f)
 plot(norm_samples_f[,1:2],col=pred_train,pch=pred_train,main="Predicted Labels")
-
-
 rand_points <<- matrix(data = runif(n = NUM_FEATURES * RAND_POINTS),
                        nrow = RAND_POINTS,
                        ncol = NUM_FEATURES)
 norm_rand_points <- scales::rescale(rand_points, to = c(0,1))
 pred_classes <- predict_n(norm_rand_points)
 plot(norm_rand_points[,1:2],col=pred_classes,pch=pred_classes,main="Decision Boundary")
-
-
 training_misclass_rate <- sum(samples_c != pred_train) / length(pred_train)
-print(training_misclass_rate)
+print(paste("Train Misclass Rate: ",training_misclass_rate,sep=""))
 
+# other ANN
 library(nnet)
-
+library(magrittr)
 nn_norm_features <- scales::rescale(as.matrix(top2[rand_row_order,2:10]),to=c(0,1))
-nn_classes <- as.factor(top2[rand_row_order,11])
-
+nn_classes <- as.factor(as.matrix(top2[rand_row_order,11]))
 nn_df <- top2 %>%
   dplyr::mutate(y = as.factor(as.character(tumor_stage))) %>%
   dplyr::select(y,
@@ -271,9 +265,23 @@ nn_df <- top2 %>%
                 ENSG00000117984,
                 ENSG00000152234) 
 
-nn_model <- nnet::nnet(formula = y~.,data=nn_df,size=c(15,15,15),maxitr=2500)
+nn_df$ENSG00000085733 <- scales::rescale(nn_df$ENSG00000085733,to=c(0,1))
+nn_df$ENSG00000105568 <- scales::rescale(nn_df$ENSG00000105568,to=c(0,1))
+nn_df$ENSG00000165949 <- scales::rescale(nn_df$ENSG00000165949,to=c(0,1))
+nn_df$ENSG00000205542 <- scales::rescale(nn_df$ENSG00000205542,to=c(0,1))
+nn_df$ENSG00000106153 <- scales::rescale(nn_df$ENSG00000106153,to=c(0,1))
+nn_df$ENSG00000072778 <- scales::rescale(nn_df$ENSG00000072778,to=c(0,1))
+nn_df$ENSG00000108679 <- scales::rescale(nn_df$ENSG00000108679,to=c(0,1))
+nn_df$ENSG00000117984 <- scales::rescale(nn_df$ENSG00000117984,to=c(0,1))
+nn_df$ENSG00000152234 <- scales::rescale(nn_df$ENSG00000152234,to=c(0,1))
 
-train_pred <- predict(object=nn_model,newdata=norm_samples_f)
+nn_model <- nnet::nnet(formula = y~.,
+                       data=nn_df,
+                       size=30,
+                       maxitr=2500)
+nn_train_pred <- predict(object=nn_model,newdata=nn_df[,2:10])
+nn_training_misclass_rate <- sum(nn_df$y != round(nn_train_pred)) / length(nn_train_pred)
+print(paste("Comp. Train Misclass Rate: ",nn_training_misclass_rate,sep=""))
 
 
 
