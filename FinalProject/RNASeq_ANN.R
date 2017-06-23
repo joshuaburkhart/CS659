@@ -5,13 +5,15 @@ library(scales)
 NUM_TRAIN_IT <<- 2500
 ETA <<- 1/NUM_TRAIN_IT
 RAND_POINTS <<- 500 # displays decision boundary
+MBE_THRESH <<- 0.05
+RNA_SEQ_ANALYSIS <<- 0
 
 # input layer
 NUM_FEATURES <<- 9
 INPUT_WIDTH <<- NUM_FEATURES + 1 # (bias)
 
 # hidden layers
-HIDDEN_LAYER_DEPTH <<- 3
+HIDDEN_LAYER_DEPTH <<- 1
 HIDDEN_CORE_DEPTH <<- HIDDEN_LAYER_DEPTH - 1 # special dims for final hidden layer
 HIDDEN_LAYER_WIDTH <<- 30
 ANN_WIDTH <<- HIDDEN_LAYER_WIDTH + 1 # (bias)
@@ -65,20 +67,25 @@ forward_prop <- function(training_sample_features){
   # input layer
   input_activation <<- c(training_sample_features,1)
   
-  hidden_core_activation[,1] <<-
-    c(activation_function(t(input_axon_w) %*% input_activation),1)
-  
-  if(HIDDEN_CORE_DEPTH > 1){
-    for(core_layer in 2:HIDDEN_CORE_DEPTH){
-      hidden_core_activation[,core_layer] <<-
-        c(activation_function(t(hidden_core_axon_w[,,core_layer - 1]) %*%
-                                hidden_core_activation[,core_layer - 1]),1)
+  if(HIDDEN_CORE_DEPTH > 0){
+    hidden_core_activation[,1] <<-
+      c(activation_function(t(input_axon_w) %*% input_activation),1)
+    
+    if(HIDDEN_CORE_DEPTH > 1){
+      for(core_layer in 2:HIDDEN_CORE_DEPTH){
+        hidden_core_activation[,core_layer] <<-
+          c(activation_function(t(hidden_core_axon_w[,,core_layer - 1]) %*%
+                                  hidden_core_activation[,core_layer - 1]),1)
+      }
     }
+    
+    hidden_final_activation <<-
+      c(activation_function(t(hidden_core_axon_w[,,HIDDEN_CORE_DEPTH]) %*%
+                              hidden_core_activation[,HIDDEN_CORE_DEPTH]),1)
+  }else{
+    hidden_final_activation <<-
+      c(activation_function(t(input_axon_w) %*% input_activation),1)
   }
-  
-  hidden_final_activation <<-
-    c(activation_function(t(hidden_core_axon_w[,,HIDDEN_CORE_DEPTH]) %*%
-                            hidden_core_activation[,HIDDEN_CORE_DEPTH]),1)
   
   output_activation <<-
     activation_function(t(hidden_final_axon_w) %*% hidden_final_activation)
@@ -104,43 +111,52 @@ backward_prop <- function(sample_class){
     (hidden_final_activation[1:HIDDEN_LAYER_WIDTH] *    
        (1 - hidden_final_activation[1:HIDDEN_LAYER_WIDTH]))
   
-  hidden_core_deltas[,HIDDEN_CORE_DEPTH] <<-         
-    hidden_core_axon_w[1:HIDDEN_LAYER_WIDTH,,HIDDEN_CORE_DEPTH] %*%     
-    hidden_final_deltas *                            
-    (hidden_core_activation[1:HIDDEN_LAYER_WIDTH,HIDDEN_CORE_DEPTH] *     
-       (1 - hidden_core_activation[1:HIDDEN_LAYER_WIDTH,HIDDEN_CORE_DEPTH]))  
-  
-  if(HIDDEN_CORE_DEPTH > 1){
-    for(core_layer in (HIDDEN_CORE_DEPTH - 1):1){
-      hidden_core_deltas[,core_layer] <<-
-        hidden_core_axon_w[1:HIDDEN_LAYER_WIDTH,,core_layer] %*%
-        hidden_core_deltas[,core_layer + 1] *
-        (hidden_core_activation[1:HIDDEN_LAYER_WIDTH,core_layer] *
-           (1 - hidden_core_activation[1:HIDDEN_LAYER_WIDTH,core_layer]))
+  if(HIDDEN_CORE_DEPTH > 0){
+    hidden_core_deltas[,HIDDEN_CORE_DEPTH] <<-         
+      hidden_core_axon_w[1:HIDDEN_LAYER_WIDTH,,HIDDEN_CORE_DEPTH] %*%     
+      hidden_final_deltas *                            
+      (hidden_core_activation[1:HIDDEN_LAYER_WIDTH,HIDDEN_CORE_DEPTH] *     
+         (1 - hidden_core_activation[1:HIDDEN_LAYER_WIDTH,HIDDEN_CORE_DEPTH]))  
+    
+    if(HIDDEN_CORE_DEPTH > 1){
+      for(core_layer in (HIDDEN_CORE_DEPTH - 1):1){
+        hidden_core_deltas[,core_layer] <<-
+          hidden_core_axon_w[1:HIDDEN_LAYER_WIDTH,,core_layer] %*%
+          hidden_core_deltas[,core_layer + 1] *
+          (hidden_core_activation[1:HIDDEN_LAYER_WIDTH,core_layer] *
+             (1 - hidden_core_activation[1:HIDDEN_LAYER_WIDTH,core_layer]))
+      }
     }
-  }
-  
-  input_axon_w <<-
-    input_axon_w -
-    ETA *
-    input_activation %*%
-    t(hidden_core_deltas[1:HIDDEN_LAYER_WIDTH,1])
-  
-  if(HIDDEN_CORE_DEPTH > 1){
-    for(core_layer in 1:(HIDDEN_CORE_DEPTH - 1)){
-      hidden_core_axon_w[,,core_layer] <<-
-        hidden_core_axon_w[,,core_layer] -
-        ETA *
-        hidden_core_activation[,core_layer] %*%
-        t(hidden_core_deltas[1:HIDDEN_LAYER_WIDTH,core_layer + 1])
+    
+    input_axon_w <<-
+      input_axon_w -
+      ETA *
+      input_activation %*%
+      t(hidden_core_deltas[1:HIDDEN_LAYER_WIDTH,1])
+    
+    if(HIDDEN_CORE_DEPTH > 1){
+      for(core_layer in 1:(HIDDEN_CORE_DEPTH - 1)){
+        hidden_core_axon_w[,,core_layer] <<-
+          hidden_core_axon_w[,,core_layer] -
+          ETA *
+          hidden_core_activation[,core_layer] %*%
+          t(hidden_core_deltas[1:HIDDEN_LAYER_WIDTH,core_layer + 1])
+      }
     }
+    
+    hidden_core_axon_w[,,HIDDEN_CORE_DEPTH] <<-     
+      hidden_core_axon_w[,,HIDDEN_CORE_DEPTH] -     
+      ETA *                                           
+      hidden_core_activation[,HIDDEN_CORE_DEPTH] %*%
+      t(hidden_final_deltas[1:HIDDEN_LAYER_WIDTH])
+    
+  }else{
+    input_axon_w <<-
+      input_axon_w -
+      ETA *
+      input_activation %*%
+      t(hidden_final_deltas[1:HIDDEN_LAYER_WIDTH])
   }
-  
-  hidden_core_axon_w[,,HIDDEN_CORE_DEPTH] <<-     
-    hidden_core_axon_w[,,HIDDEN_CORE_DEPTH] -     
-    ETA *                                           
-    hidden_core_activation[,HIDDEN_CORE_DEPTH] %*%
-    t(hidden_final_deltas[1:HIDDEN_LAYER_WIDTH])
   
   hidden_final_axon_w <<-
     hidden_final_axon_w -
@@ -156,13 +172,13 @@ train <- function(training_samples_features, training_samples_classes){
   batch_errors <- c()
   mean_error_sum <- c()
   for(x in 1:NUM_TRAIN_IT){
-     for(i in 1:nrow(training_samples_features)){
+    for(i in 1:nrow(training_samples_features)){
       #i <- ceiling(runif(n=1,min=0,max=nrow(training_samples_features)))
       forward_prop(training_samples_features[i,])
       error <- backward_prop(training_samples_classes[i])
       error_sum <- c(error_sum,error)
       batch_errors <- c(batch_errors,error)
-     }
+    }
     mbe <- mean(batch_errors)
     print(paste("MBE ",x,": ",mbe,sep=""))
     zeta <- (mbe / (2 * 3^(1/2)))
@@ -171,6 +187,10 @@ train <- function(training_samples_features, training_samples_classes){
     #print(paste("ETA: ",ETA,sep=""))
     mean_error_sum <- c(mean_error_sum,rep(mean(batch_errors),nrow(training_samples_features)))
     batch_errors <- c() #clear batch errors
+    if (mbe < MBE_THRESH){
+      print(paste("mbe < ",MBE_THRESH," achieved (mbe = ",mbe,"). Stopping...",sep=""))
+      break
+    }
   }
   plot(error_sum, col = "black",main="Individual (Black) & Mean (Red) Errors")#,col=seq(1:nrow(training_samples_features)),pch = seq(1:nrow(training_samples_features)))
   points(mean_error_sum, col="red")
@@ -229,8 +249,10 @@ samples_c <- matrix(
 # RNASeq Data
 rand_row_order <- sample(105,replace = FALSE)
 load("~/SoftwareProjects/CellFusionAnalysis/src/PrognosticPredictor/rna_seq/top10.rda")
-#samples_f <- as.matrix(top2[rand_row_order,2:10])
-#samples_c <- as.matrix(top2[rand_row_order,"tumor_stage"])
+if(RNA_SEQ_ANALYSIS > 0){
+  samples_f <- as.matrix(top2[rand_row_order,2:10])
+  samples_c <- as.matrix(top2[rand_row_order,"tumor_stage"])
+}
 norm_samples_f <- scales::rescale(samples_f, to = c(0,1))
 
 # my ANN
@@ -258,7 +280,7 @@ nn_model <- nnet::nnet(formula = y~.,
                        data=nn_df,
                        size=30,
                        maxitr=2500)
-nn_train_pred <- round(predict(object=nn_model,newdata=nn_df[,1:9]))
+nn_train_pred <- predict(object=nn_model,newdata=nn_df[,1:9])
 pred_vec <- c()
 for(i in 1:nrow(nn_train_pred)){
   pred_vec <- c(pred_vec,which(nn_train_pred[i,] == max(nn_train_pred[i,])))
@@ -277,7 +299,7 @@ pred_vec <- c()
 for(i in 1:nrow(nn_pred_classes)){
   pred_vec <- c(pred_vec,which(nn_pred_classes[i,] == max(nn_pred_classes[i,])))
 }
-plot(norm_rand_points[,1:2],col=pred_vec,pch=pred_vec,main="nn Decision Boundary")
+plot(norm_rand_points[,1:2],col=pred_vec,pch=pred_vec,main="nnet Decision Boundary")
 
 
 
