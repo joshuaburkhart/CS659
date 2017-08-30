@@ -13,9 +13,13 @@ NUM_FEATURES <<- 9
 INPUT_WIDTH <<- NUM_FEATURES + 1 # (bias)
 
 # hidden layers
+<<<<<<< HEAD
+HIDDEN_LAYER_WIDTH <<- 15
+=======
 HIDDEN_LAYER_DEPTH <<- 3
 HIDDEN_CORE_DEPTH <<- HIDDEN_LAYER_DEPTH - 1 # special dims for final hidden layer
 HIDDEN_LAYER_WIDTH <<- 30
+>>>>>>> fec908c820c8bbf603b40e4955464183f4ee7a3a
 ANN_WIDTH <<- HIDDEN_LAYER_WIDTH + 1 # (bias)
 
 # output layer
@@ -64,8 +68,13 @@ activation_function <- function(x){
 }
 
 forward_prop <- function(training_sample_features){
-  # input layer
   input_activation <<- c(training_sample_features,1)
+<<<<<<< HEAD
+  hidden0_activation <<-
+    c(activation_function(t(input_axon_w) %*% input_activation),1)
+  hidden1_activation <<-
+    c(activation_function(t(hidden0_axon_w) %*% hidden0_activation),1)
+=======
   
   if(HIDDEN_CORE_DEPTH > 0){
     hidden_core_activation[,1] <<-
@@ -87,6 +96,7 @@ forward_prop <- function(training_sample_features){
       c(activation_function(t(input_axon_w) %*% input_activation),1)
   }
   
+>>>>>>> fec908c820c8bbf603b40e4955464183f4ee7a3a
   output_activation <<-
     activation_function(t(hidden_final_axon_w) %*% hidden_final_activation)
 }
@@ -104,6 +114,31 @@ calc_err <- function(sample_class){
 
 backward_prop <- function(sample_class){
   output_deltas <<- calc_err(sample_class)
+<<<<<<< HEAD
+  hidden1_deltas <<-
+    hidden1_axon_w %*%
+    output_deltas *
+    hidden1_activation *
+    (1 - hidden1_activation)
+  hidden0_deltas <<-
+    hidden0_axon_w %*%
+    hidden1_deltas[1:HIDDEN_LAYER_WIDTH] *
+    hidden0_activation *
+    (1 - hidden0_activation)
+  
+  input_axon_w <<-
+    input_axon_w -
+    ETA *
+    input_activation %*%
+    t(hidden0_deltas[1:HIDDEN_LAYER_WIDTH])
+  hidden0_axon_w <<-
+    hidden0_axon_w -
+    ETA *
+    hidden0_activation %*%
+    t(hidden1_deltas[1:HIDDEN_LAYER_WIDTH])
+  hidden1_axon_w <<-
+    hidden1_axon_w -
+=======
   
   hidden_final_deltas <<-        
     hidden_final_axon_w[1:HIDDEN_LAYER_WIDTH,] %*%      
@@ -160,6 +195,7 @@ backward_prop <- function(sample_class){
   
   hidden_final_axon_w <<-
     hidden_final_axon_w -
+>>>>>>> fec908c820c8bbf603b40e4955464183f4ee7a3a
     ETA *
     hidden_final_activation %*%
     t(output_deltas)
@@ -210,6 +246,48 @@ predict_n <- function(test_samples_features){
   return(ps)
 }
 
+<<<<<<< HEAD
+load("top2.rda")
+
+samples_f <- matrix(
+  c(.1,.6,
+    .1,.7,
+    .1,.8,
+    .1,.9,
+    0,0,
+    0,.2,
+    .3,.3,
+    .3,.3,
+    .3,.1,
+    .6,.15,
+    .6,.2,
+    .6,.3,
+    .6,.1,
+    .6,.35,
+    .7,.6,
+    .7,.7,
+    .7,.8,
+    .7,.9,
+    .8,.8,
+    .8,.25,
+    .8,.1,
+    .8,.3,
+    .8,.2,
+    .8,.4),
+  nrow = 24,
+  ncol = 2,
+  byrow = TRUE)
+
+samples_c <- matrix(
+  c(1,1,1,1,2,2,2,2,1,1,1,1,1,1,2,2,2,2,3,3,3,3,3,3),
+  nrow = 24,
+  ncol = 1,
+  byrow = TRUE
+)
+
+samples_f <- as.matrix(top2[,2:3])
+samples_c <- as.matrix(top2$tumor_stage)
+=======
 # Example Data
 # samples_f <- matrix(
 #   c(.1,.6,1,1,1,1,1,1,1,
@@ -245,6 +323,7 @@ predict_n <- function(test_samples_features){
 #   ncol = 1,
 #   byrow = TRUE
 # )
+>>>>>>> fec908c820c8bbf603b40e4955464183f4ee7a3a
 
 # RNASeq Data
 rand_row_order <- sample(105,replace = FALSE)
