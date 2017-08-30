@@ -314,9 +314,9 @@ GLR.m <- function(X,y,X_test,y_test,rate_divisor,error_report_intv,k){
   
   # – use the annealed learning rate 2 / k ;
   alpha <- function(k){
-    return(0.00001)
-    #rate <- 2/k
-    #return(rate/rate_divisor)
+    #return(0.00001)
+    rate <- 2/k
+    return(rate/rate_divisor)
   }
   # repeat the update procedure for 1000 steps reusing the examples in the training data
   # if neccessary (hint: the index of the i-th example in the training set can be obtained
@@ -336,13 +336,13 @@ GLR.m <- function(X,y,X_test,y_test,rate_divisor,error_report_intv,k){
     predicted_cache <- cbind(predicted_cache,g)
     actual_cache <- cbind(actual_cache,y[i])
       if(i %% error_report_intv == 0){
-        predicted <- X %*% w
-        predicted_test <- X_test %*% w
+        predicted <- t(w) %*% t(X)
+        predicted_test <- t(w) %*% t(X_test)
         actual <- y
         actual_test <- y_test
         
-        pct_err <- sum(abs(round(predicted) - y)) / length(predicted)
-        pct_err_test <- sum(abs(round(predicted_test) - y_test)) / length(predicted_test)
+        pct_err <- sum(abs(sapply(predicted,to_binary)) - y) / length(predicted)
+        pct_err_test <- sum(abs(sapply(predicted_test,to_binary)) - y_test) / length(predicted_test)
         
         print(paste("train pct_err:",pct_err,sep=" "))
         print(paste("test pct_err:",pct_err_test,sep=" "))
@@ -377,7 +377,7 @@ main2.m <- function(){
   }
   
   # train
-  w <- GLR.m(as.matrix(classification_train_df[,1:2]),as.matrix(classification_train_df[,3]),as.matrix(classification_test_df[,1:2]),as.matrix(classification_test_df[,3]),1,50,1000)
+  w <- GLR.m(as.matrix(classification_train_df[,1:2]),as.matrix(classification_train_df[,3]),as.matrix(classification_test_df[,1:2]),as.matrix(classification_test_df[,3]),1,50,500)
   
   # assess training
   class_train_predicted <- t(w) %*% t(cbind(rep(1,nrow(classification_train_df)),as.matrix(classification_train_df[,1:2])))
@@ -597,3 +597,4 @@ main4.m <- function(){
 
 # (g) Report the results (parameters of the generative model), and errors. Compare
 # them to the results obtained in problem 2.
+

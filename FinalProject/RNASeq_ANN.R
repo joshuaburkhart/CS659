@@ -8,7 +8,7 @@ ETA <<- 0.1
 NUM_FEATURES <<- 2
 INPUT_WIDTH <<- NUM_FEATURES + 1 # (bias)
 
-# hidden1 layer
+# hidden layers
 HIDDEN_LAYER_WIDTH <<- 15
 ANN_WIDTH <<- HIDDEN_LAYER_WIDTH + 1 # (bias)
 
@@ -61,15 +61,11 @@ activation_function <- function(x){
 }
 
 forward_prop <- function(training_sample_features){
-  # input layer
   input_activation <<- c(training_sample_features,1)
-  
   hidden0_activation <<-
     c(activation_function(t(input_axon_w) %*% input_activation),1)
-  
   hidden1_activation <<-
     c(activation_function(t(hidden0_axon_w) %*% hidden0_activation),1)
-  
   output_activation <<-
     activation_function(t(hidden1_axon_w) %*% hidden1_activation)
 }
@@ -87,13 +83,11 @@ calc_err <- function(sample_class){
 
 backward_prop <- function(sample_class){
   output_deltas <<- calc_err(sample_class)
-  
   hidden1_deltas <<-
     hidden1_axon_w %*%
     output_deltas *
     hidden1_activation *
     (1 - hidden1_activation)
-  
   hidden0_deltas <<-
     hidden0_axon_w %*%
     hidden1_deltas[1:HIDDEN_LAYER_WIDTH] *
@@ -105,13 +99,11 @@ backward_prop <- function(sample_class){
     ETA *
     input_activation %*%
     t(hidden0_deltas[1:HIDDEN_LAYER_WIDTH])
-  
   hidden0_axon_w <<-
     hidden0_axon_w -
     ETA *
     hidden0_activation %*%
     t(hidden1_deltas[1:HIDDEN_LAYER_WIDTH])
-  
   hidden1_axon_w <<-
     hidden1_axon_w -
     ETA *
@@ -119,7 +111,6 @@ backward_prop <- function(sample_class){
     t(output_deltas)
   
   return(sqrt(sum((output_activation - encode_class(sample_class)) ^ 2)))
-  #return(sum(output_deltas))
 }
 
 train <- function(training_samples_features, training_samples_classes){
@@ -148,7 +139,7 @@ predict_n <- function(test_samples_features){
   return(ps)
 }
 
-load("~/SoftwareProjects/CellFusionAnalysis/src/PrognosticPredictor/rna_seq/top2.rda")
+load("top2.rda")
 
 samples_f <- matrix(
   c(.1,.6,
@@ -186,8 +177,8 @@ samples_c <- matrix(
   byrow = TRUE
 )
 
-#samples_f <- as.matrix(top2[,2:3])
-#samples_c <- as.matrix(top2$tumor_stage)
+samples_f <- as.matrix(top2[,2:3])
+samples_c <- as.matrix(top2$tumor_stage)
 
 norm_samples_f <- scales::rescale(samples_f, to = c(0,1))
 train(norm_samples_f, samples_c)
